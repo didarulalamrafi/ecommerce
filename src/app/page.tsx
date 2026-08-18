@@ -3,7 +3,6 @@
 import Image from "next/image";
 import { useState } from "react";
 import { Fraunces, Inter, IBM_Plex_Mono } from "next/font/google";
-import { Button, Chip, Input } from "@heroui/react";
 
 /**
  * Fonts
@@ -113,12 +112,9 @@ export default function Home() {
       <section className="mx-auto max-w-7xl px-5 pb-16 pt-20 md:px-8 md:pb-24 md:pt-28">
         <div className="grid items-center gap-12 md:grid-cols-2">
           <div>
-            <Chip
-              variant="flat"
-              className="mb-6 border border-[#5B6B4C]/30 bg-[#5B6B4C]/10 text-[#5B6B4C]"
-            >
+            <span className="mb-6 inline-block rounded-full border border-[#5B6B4C]/30 bg-[#5B6B4C]/10 px-3 py-1 text-sm text-[#5B6B4C]">
               হাতে তৈরি · সীমিত সংখ্যক
-            </Chip>
+            </span>
             <h1 className="font-[family-name:var(--font-display)] text-5xl leading-[1.05] tracking-tight md:text-6xl">
               মাটির গল্প,{" "}
               <span className="italic text-[#B1502F]">প্রতিটি ঘরে।</span>
@@ -128,21 +124,12 @@ export default function Home() {
               পিস আলাদা, প্রতিটির পেছনে আছে একজন শিল্পীর গল্প।
             </p>
             <div className="mt-8 flex flex-wrap gap-4">
-              <Button
-                radius="full"
-                size="lg"
-                className="bg-[#B1502F] px-8 text-white"
-              >
+              <button className="rounded-full bg-[#B1502F] px-8 py-3 text-base text-white transition-colors hover:bg-[#9c4327]">
                 কেনাকাটা শুরু করুন
-              </Button>
-              <Button
-                radius="full"
-                size="lg"
-                variant="bordered"
-                className="border-[#202A44] px-8 text-[#202A44]"
-              >
+              </button>
+              <button className="rounded-full border border-[#202A44] px-8 py-3 text-base text-[#202A44] transition-colors hover:bg-[#202A44] hover:text-[#F6F1E9]">
                 আমাদের গল্প পড়ুন
-              </Button>
+              </button>
             </div>
 
             <div className="mt-10 flex gap-8 text-sm">
@@ -284,15 +271,12 @@ export default function Home() {
                   <span className="font-[family-name:var(--font-mono)] text-sm">
                     ৳{p.price}
                   </span>
-                  <Button
-                    isIconOnly
-                    radius="full"
-                    size="sm"
-                    className="bg-[#202A44] text-[#F6F1E9]"
+                  <button
                     aria-label="কার্টে যোগ করুন"
+                    className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#202A44] text-[#F6F1E9] transition-colors hover:bg-[#B1502F]"
                   >
                     <PlusIcon />
-                  </Button>
+                  </button>
                 </div>
               </div>
             ))}
@@ -332,6 +316,47 @@ export default function Home() {
               ))}
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ---------- NEWSLETTER ---------- */}
+      <section id="newsletter" className="bg-[#202A44] py-20 text-[#F6F1E9]">
+        <div className="mx-auto max-w-2xl px-5 text-center md:px-8">
+          <h2 className="font-[family-name:var(--font-display)] text-3xl italic md:text-4xl">
+            নতুন সংগ্রহের খবর সবার আগে পান
+          </h2>
+          <p className="mt-3 text-sm text-[#F6F1E9]/70">
+            মাসে একবার — নতুন ডিজাইন, কারিগরের গল্প, বিশেষ অফার।
+          </p>
+
+          {subscribed ? (
+            <p className="mt-6 font-[family-name:var(--font-mono)] text-sm text-[#E2A227]">
+              ধন্যবাদ! আপনি সফলভাবে যুক্ত হয়েছেন।
+            </p>
+          ) : (
+            <form
+              className="mx-auto mt-6 flex max-w-md flex-col gap-3 sm:flex-row"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (email) setSubscribed(true);
+              }}
+            >
+              <input
+                type="email"
+                required
+                placeholder="আপনার ইমেইল"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="flex-1 rounded-full border border-[#F6F1E9]/30 bg-transparent px-4 py-2 text-sm text-[#F6F1E9] outline-none placeholder:text-[#F6F1E9]/40 focus:border-[#F6F1E9]/60"
+              />
+              <button
+                type="submit"
+                className="rounded-full bg-[#E2A227] px-6 py-2 text-sm font-medium text-[#202A44] transition-colors hover:bg-[#c98f1f]"
+              >
+                সাবস্ক্রাইব করুন
+              </button>
+            </form>
+          )}
         </div>
       </section>
     </div>

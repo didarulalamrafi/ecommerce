@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@heroui/react";
 
 /**
  * Modern footer for Maati.
@@ -55,15 +54,13 @@ export default function Footer() {
                   onChange={(e) => setEmail(e.target.value)}
                   className="flex-1 rounded-full border border-[#F6F1E9]/30 bg-transparent px-4 py-2 text-sm text-[#F6F1E9] outline-none placeholder:text-[#F6F1E9]/40 focus:border-[#F6F1E9]/60"
                 />
-                <Button
+                <button
                   type="submit"
-                  radius="full"
-                  isIconOnly
-                  className="shrink-0 bg-[#E2A227] text-[#202A44]"
                   aria-label="সাবস্ক্রাইব করুন"
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#E2A227] text-[#202A44] transition-colors hover:bg-[#c98f1f]"
                 >
                   <ArrowIcon />
-                </Button>
+                </button>
               </form>
             )}
           </div>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@heroui/react";
 
 /**
  * Modern sticky navbar for Maati.
@@ -29,7 +28,7 @@ export default function Navbar() {
         {/* Center nav */}
         <nav className="hidden items-center gap-8 text-sm font-medium md:flex">
           <a
-            href="/products"
+            href="#products"
             className="relative py-1 text-[#202A44] transition-colors hover:text-[#B1502F] after:absolute after:-bottom-1 after:left-0 after:h-[2px] after:w-0 after:bg-[#B1502F] after:transition-all hover:after:w-full"
           >
             প্রোডাক্ট
@@ -48,13 +47,9 @@ export default function Navbar() {
             </span>
           </button>
 
-          <Button
-            radius="full"
-            variant="bordered"
-            className="border-[#202A44] px-6 text-[#202A44] hover:bg-[#202A44] hover:text-[#F6F1E9]"
-          >
+          <button className="rounded-full border border-[#202A44] px-6 py-2 text-sm text-[#202A44] transition-colors hover:bg-[#202A44] hover:text-[#F6F1E9]">
             লগইন
-          </Button>
+          </button>
         </div>
 
         {/* Mobile toggle */}
@@ -88,14 +83,12 @@ export default function Navbar() {
                 0
               </span>
             </button>
-            <Button
-              radius="full"
-              variant="bordered"
-              className="border-[#202A44] px-6 text-[#202A44]"
-              onPress={() => setOpen(false)}
+            <button
+              className="rounded-full border border-[#202A44] px-6 py-2 text-sm text-[#202A44]"
+              onClick={() => setOpen(false)}
             >
               লগইন
-            </Button>
+            </button>
           </div>
         </nav>
       </div>

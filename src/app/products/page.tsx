@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import ProductCard from "../../components/ProductCard";
+import ProductCard from "@/components/ProductCard";
+import type { Product } from "@/components/ProductCard";
 
 // UPDATED: Backend URL .env.local থেকে আসছে, hardcode নয়।
 // .env.local-এ যোগ করুন:
