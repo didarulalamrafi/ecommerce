@@ -28,7 +28,7 @@ export default function Navbar() {
         {/* Center nav */}
         <nav className="hidden items-center gap-8 text-sm font-medium md:flex">
           <a
-            href="#products"
+            href="/products"
             className="relative py-1 text-[#202A44] transition-colors hover:text-[#B1502F] after:absolute after:-bottom-1 after:left-0 after:h-[2px] after:w-0 after:bg-[#B1502F] after:transition-all hover:after:w-full"
           >
             প্রোডাক্ট
@@ -69,7 +69,7 @@ export default function Navbar() {
         }`}
       >
         <nav className="flex flex-col gap-4 px-5 py-5 text-sm font-medium">
-          <a href="#products" onClick={() => setOpen(false)}>
+          <a href="/products" onClick={() => setOpen(false)}>
             প্রোডাক্ট
           </a>
           <div className="mt-2 flex items-center justify-between">
