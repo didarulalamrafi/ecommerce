@@ -318,47 +318,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      {/* ---------- NEWSLETTER ---------- */}
-      <section id="newsletter" className="bg-[#202A44] py-20 text-[#F6F1E9]">
-        <div className="mx-auto max-w-2xl px-5 text-center md:px-8">
-          <h2 className="font-[family-name:var(--font-display)] text-3xl italic md:text-4xl">
-            নতুন সংগ্রহের খবর সবার আগে পান
-          </h2>
-          <p className="mt-3 text-sm text-[#F6F1E9]/70">
-            মাসে একবার — নতুন ডিজাইন, কারিগরের গল্প, বিশেষ অফার।
-          </p>
-
-          {subscribed ? (
-            <p className="mt-6 font-[family-name:var(--font-mono)] text-sm text-[#E2A227]">
-              ধন্যবাদ! আপনি সফলভাবে যুক্ত হয়েছেন।
-            </p>
-          ) : (
-            <form
-              className="mx-auto mt-6 flex max-w-md flex-col gap-3 sm:flex-row"
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (email) setSubscribed(true);
-              }}
-            >
-              <input
-                type="email"
-                required
-                placeholder="আপনার ইমেইল"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="flex-1 rounded-full border border-[#F6F1E9]/30 bg-transparent px-4 py-2 text-sm text-[#F6F1E9] outline-none placeholder:text-[#F6F1E9]/40 focus:border-[#F6F1E9]/60"
-              />
-              <button
-                type="submit"
-                className="rounded-full bg-[#E2A227] px-6 py-2 text-sm font-medium text-[#202A44] transition-colors hover:bg-[#c98f1f]"
-              >
-                সাবস্ক্রাইব করুন
-              </button>
-            </form>
-          )}
-        </div>
-      </section>
     </div>
   );
 }

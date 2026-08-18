@@ -71,7 +71,7 @@ export default function Footer() {
           <FooterCol
             title="শপ"
             items={[
-              { label: "সব প্রোডাক্ট", href: "#products" },
+              { label: "সব প্রোডাক্ট", href: "/products" },
               { label: "নতুন সংগ্রহ", href: "#" },
               { label: "বেস্টসেলার", href: "#" },
               { label: "অফার", href: "#" },
@@ -89,7 +89,7 @@ export default function Footer() {
           <FooterCol
             title="কোম্পানি"
             items={[
-              { label: "আমাদের গল্প", href: "#story" },
+              { label: "আমাদের গল্প", href: "/contact" },
               { label: "কারিগরেরা", href: "#" },
               { label: "ক্যারিয়ার", href: "#" },
             ]}
