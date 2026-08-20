@@ -1,37 +1,21 @@
 "use client";
 
-import { useState, FormEvent } from "react";
-import { authClient } from "../../lib/auth-client";
-
-// Better Auth এর session থেকে user টাইপ বের করা হচ্ছে
-type AuthUser = (typeof authClient.$Infer.Session)["user"];
+import { useState } from "react";
+import type { AuthUser } from "@/lib/auth-client";
 
 interface ProfileTabProps {
-  user: AuthUser | null | undefined;
+  user: AuthUser;
 }
 
 export default function ProfileTab({ user }: ProfileTabProps) {
+  const [isEditing, setIsEditing] = useState(false);
   const [form, setForm] = useState({
-    name: user?.name || "",
-    number: (user as any)?.number || "",
-    address: (user as any)?.address || "",
-    bio: (user as any)?.bio || "",
+    name: user.name || "",
+    email: user.email || "",
+    number: user.number || "",
+    address: user.address || "",
+    bio: user.bio || "",
   });
-  const [editing, setEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
-
-  // user এখনো না এলে (সেশন লোড হচ্ছে বা লগইন করা নেই) — ফর্ম রেন্ডার না করে
-  // একটা সেফ ফলব্যাক দেখানো হচ্ছে, যাতে user.name পড়তে গিয়ে ক্র্যাশ না করে।
-  if (!user) {
-    return (
-      <div className="rounded-2xl border border-[#202A44]/10 p-6 dark:border-[#F6F1E9]/10">
-        <p className="text-sm text-[#202A44]/60 dark:text-[#F6F1E9]/60">
-          লোড হচ্ছে...
-        </p>
-      </div>
-    );
-  }
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -39,140 +23,140 @@ export default function ProfileTab({ user }: ProfileTabProps) {
     setForm({ ...form, [e.target.name]: e.target.value });
   }
 
-  async function handleSave(e: FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    setMessage("");
-
+  async function handleSave() {
     try {
-      const res = await fetch(`/api/users/me`, {
+      const res = await fetch("/api/user/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        credentials: "include", // লগইন কুকি পাঠানোর জন্য জরুরি
         body: JSON.stringify(form),
       });
 
-      if (!res.ok) throw new Error("Update failed");
-
-      setMessage("প্রোফাইল সফলভাবে আপডেট হয়েছে");
-      setEditing(false);
-    } catch {
-      setMessage("প্রোফাইল আপডেট করা যায়নি, আবার চেষ্টা করুন");
-    } finally {
-      setSaving(false);
+      if (res.ok) {
+        setIsEditing(false);
+        // Optionally refresh the page or update session
+      } else {
+        alert("প্রোফাইল আপডেট ব্যর্থ হয়েছে");
+      }
+    } catch (err) {
+      alert("ত্রুটি ঘটেছে");
     }
   }
-
-  const fieldClass =
-    "w-full rounded-lg border border-[#202A44]/15 bg-white/60 px-4 py-2.5 text-sm text-[#202A44] outline-none transition focus:border-[#E2A227] focus:ring-2 focus:ring-[#E2A227]/30 disabled:opacity-60 dark:border-[#F6F1E9]/15 dark:bg-white/5 dark:text-[#F6F1E9]";
 
   return (
     <div className="rounded-2xl border border-[#202A44]/10 p-6 dark:border-[#F6F1E9]/10">
       <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-[#202A44] dark:text-[#F6F1E9]">
-          প্রোফাইল তথ্য
+        <h2 className="text-xl font-semibold text-[#202A44] dark:text-[#F6F1E9]">
+          আপনার প্রোফাইল
         </h2>
-        {!editing && (
+        <button
+          onClick={() => setIsEditing(!isEditing)}
+          className="rounded-lg bg-[#E2A227] px-4 py-2 text-sm text-white transition hover:opacity-90"
+        >
+          {isEditing ? "বাতিল" : "এডিট করুন"}
+        </button>
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm text-[#202A44]/70 dark:text-[#F6F1E9]/70">
+            নাম
+          </label>
+          {isEditing ? (
+            <input
+              type="text"
+              name="name"
+              value={form.name}
+              onChange={handleChange}
+              className="w-full rounded-lg border border-[#202A44]/15 bg-white/60 px-3 py-2 text-[#202A44] dark:bg-white/5 dark:text-[#F6F1E9]"
+            />
+          ) : (
+            <p className="text-[#202A44] dark:text-[#F6F1E9]">{user.name}</p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm text-[#202A44]/70 dark:text-[#F6F1E9]/70">
+            ইমেইল
+          </label>
+          {isEditing ? (
+            <input
+              type="email"
+              name="email"
+              value={form.email}
+              onChange={handleChange}
+              className="w-full rounded-lg border border-[#202A44]/15 bg-white/60 px-3 py-2 text-[#202A44] dark:bg-white/5 dark:text-[#F6F1E9]"
+            />
+          ) : (
+            <p className="text-[#202A44] dark:text-[#F6F1E9]">{user.email}</p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm text-[#202A44]/70 dark:text-[#F6F1E9]/70">
+            ফোন নম্বর
+          </label>
+          {isEditing ? (
+            <input
+              type="tel"
+              name="number"
+              value={form.number}
+              onChange={handleChange}
+              className="w-full rounded-lg border border-[#202A44]/15 bg-white/60 px-3 py-2 text-[#202A44] dark:bg-white/5 dark:text-[#F6F1E9]"
+            />
+          ) : (
+            <p className="text-[#202A44] dark:text-[#F6F1E9]">
+              {user.number || "সংযুক্ত নেই"}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm text-[#202A44]/70 dark:text-[#F6F1E9]/70">
+            ঠিকানা
+          </label>
+          {isEditing ? (
+            <input
+              type="text"
+              name="address"
+              value={form.address}
+              onChange={handleChange}
+              className="w-full rounded-lg border border-[#202A44]/15 bg-white/60 px-3 py-2 text-[#202A44] dark:bg-white/5 dark:text-[#F6F1E9]"
+            />
+          ) : (
+            <p className="text-[#202A44] dark:text-[#F6F1E9]">
+              {user.address || "সংযুক্ত নেই"}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm text-[#202A44]/70 dark:text-[#F6F1E9]/70">
+            বায়ো
+          </label>
+          {isEditing ? (
+            <textarea
+              name="bio"
+              value={form.bio}
+              onChange={handleChange}
+              className="w-full rounded-lg border border-[#202A44]/15 bg-white/60 px-3 py-2 text-[#202A44] dark:bg-white/5 dark:text-[#F6F1E9]"
+              rows={3}
+            />
+          ) : (
+            <p className="text-[#202A44] dark:text-[#F6F1E9]">
+              {user.bio || "সংযুক্ত নেই"}
+            </p>
+          )}
+        </div>
+
+        {isEditing && (
           <button
-            onClick={() => setEditing(true)}
-            className="rounded-full border border-[#202A44] px-4 py-1.5 text-sm text-[#202A44] transition-colors hover:bg-[#202A44] hover:text-[#F6F1E9] dark:border-[#F6F1E9] dark:text-[#F6F1E9] dark:hover:bg-[#F6F1E9] dark:hover:text-[#202A44]"
+            onClick={handleSave}
+            className="w-full rounded-lg bg-[#202A44] py-2 text-[#F6F1E9] transition hover:opacity-90 dark:bg-[#F6F1E9] dark:text-[#202A44]"
           >
-            এডিট করুন
+            সেভ করুন
           </button>
         )}
       </div>
-
-      <form onSubmit={handleSave} className="space-y-4">
-        <Field label="নাম">
-          <input
-            name="name"
-            value={form.name}
-            onChange={handleChange}
-            disabled={!editing}
-            className={fieldClass}
-          />
-        </Field>
-
-        {/* ইমেইল বদলানো যাবে না — শুধু দেখানো হচ্ছে */}
-        <Field label="ইমেইল">
-          <input value={user.email} disabled className={fieldClass} />
-        </Field>
-
-        <Field label="মোবাইল নম্বর">
-          <input
-            name="number"
-            value={form.number}
-            onChange={handleChange}
-            disabled={!editing}
-            className={fieldClass}
-          />
-        </Field>
-
-        <Field label="ঠিকানা">
-          <input
-            name="address"
-            value={form.address}
-            onChange={handleChange}
-            disabled={!editing}
-            placeholder="আপনার ঠিকানা লিখুন"
-            className={fieldClass}
-          />
-        </Field>
-
-        <Field label="বায়ো / সম্পর্কে">
-          <textarea
-            name="bio"
-            value={form.bio}
-            onChange={handleChange}
-            disabled={!editing}
-            rows={3}
-            placeholder="নিজের সম্পর্কে কিছু লিখুন"
-            className={fieldClass}
-          />
-        </Field>
-
-        {message && (
-          <p className="text-sm text-[#B1502F] dark:text-[#E2A227]">
-            {message}
-          </p>
-        )}
-
-        {editing && (
-          <div className="flex gap-3 pt-2">
-            <button
-              type="submit"
-              disabled={saving}
-              className="rounded-full bg-[#202A44] px-6 py-2 text-sm text-[#F6F1E9] transition hover:opacity-90 disabled:opacity-50 dark:bg-[#F6F1E9] dark:text-[#202A44]"
-            >
-              {saving ? "সেভ হচ্ছে..." : "সেভ করুন"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setEditing(false)}
-              className="rounded-full border border-[#202A44]/20 px-6 py-2 text-sm text-[#202A44] transition hover:bg-[#202A44]/5 dark:border-[#F6F1E9]/20 dark:text-[#F6F1E9]"
-            >
-              বাতিল
-            </button>
-          </div>
-        )}
-      </form>
-    </div>
-  );
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label className="mb-1.5 block text-xs font-medium text-[#202A44]/60 dark:text-[#F6F1E9]/60">
-        {label}
-      </label>
-      {children}
     </div>
   );
 }

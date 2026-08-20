@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useSession } from "../lib/auth-client";
+import { useSession, signOut, AuthUser } from "../lib/auth-client";
 import { useCart } from "../context/CartContext";
 
 /**
@@ -292,7 +292,9 @@ export default function Navbar() {
             {user && (
               <button
                 onClick={() => {
-                  signOut();
+                  // ✅ FIX: signOut() কে খালি কল করা যাবে না,
+                  // TS টাইপ অনুযায়ী কমপক্ষে একটা argument লাগবে
+                  signOut({});
                   setOpen(false);
                 }}
                 className="rounded-full border border-[#202A44]/20 px-4 py-1.5 text-xs text-[#202A44] dark:border-[#F6F1E9]/20 dark:text-[#F6F1E9]"
