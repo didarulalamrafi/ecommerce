@@ -23,6 +23,34 @@ const EMPTY_FORM = {
   stock: "",
 };
 
+// ---- স্ট্যাটাস ব্যাজের জন্য ছোট হেল্পার কম্পোনেন্ট ----
+function StatusBadge({ status }: { status?: string }) {
+  const map: Record<string, { label: string; className: string }> = {
+    pending: {
+      label: "রিভিউ পেন্ডিং",
+      className: "bg-[#E2A227]/15 text-[#E2A227] border border-[#E2A227]/40",
+    },
+    approved: {
+      label: "অ্যাপ্রুভড",
+      className: "bg-green-600/10 text-green-700 border border-green-600/30",
+    },
+    rejected: {
+      label: "রিজেক্টেড",
+      className: "bg-[#B1502F]/10 text-[#B1502F] border border-[#B1502F]/30",
+    },
+  };
+
+  const s = map[status || "pending"] || map.pending;
+
+  return (
+    <span
+      className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${s.className}`}
+    >
+      {s.label}
+    </span>
+  );
+}
+
 // admin/products/page.tsx এর প্রায় হুবহু কপি — পার্থক্য দুইটা জায়গায়:
 // ১. role check করে "seller" (admin ও ঢুকতে পারবে চাইলে নিচে বদলাও)
 // ২. getProducts() এর বদলে getMyProducts() — শুধু নিজের প্রোডাক্ট আসবে
@@ -96,9 +124,11 @@ export default function SellerProductsPage() {
     try {
       if (editingId) {
         // নিজের প্রোডাক্ট না হলে backend 403 দেবে (verifyProductOwnerOrAdmin)
+        // নোট: এডিট করলে backend চাইলে status আবার "pending" এ রিসেট করে দিতে পারে
+        // (approved প্রোডাক্ট বদলালে আবার রিভিউ দরকার হতে পারে) — এটা backend এর সিদ্ধান্ত।
         await updateProduct(editingId, payload);
       } else {
-        await createProduct(payload); // backend নিজে থেকেই sellerId বসিয়ে দেয়
+        await createProduct(payload); // backend নিজে থেকেই sellerId + status:"pending" বসিয়ে দেয়
       }
       resetForm();
       await loadProducts();
@@ -253,12 +283,22 @@ export default function SellerProductsPage() {
                     className="h-14 w-14 rounded-lg object-cover"
                   />
                   <div>
-                    <p className="text-sm font-medium text-[#202A44] dark:text-[#F6F1E9]">
-                      {p.name}
-                    </p>
+                    <div className="mb-1 flex items-center gap-2">
+                      <p className="text-sm font-medium text-[#202A44] dark:text-[#F6F1E9]">
+                        {p.name}
+                      </p>
+                      <StatusBadge status={(p as any).status} />
+                    </div>
                     <p className="text-xs text-[#202A44]/50 dark:text-[#F6F1E9]/50">
                       {p.category} • ৳{p.price} • স্টক: {String(p.stock ?? "-")}
                     </p>
+                    {/* রিজেক্ট হলে কারণ দেখাও */}
+                    {(p as any).status === "rejected" &&
+                      (p as any).rejectionReason && (
+                        <p className="mt-1 text-xs text-[#B1502F]">
+                          কারণ: {(p as any).rejectionReason}
+                        </p>
+                      )}
                   </div>
                 </div>
 

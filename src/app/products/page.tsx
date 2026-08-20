@@ -3,12 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import ProductCard, { type Product } from "../../components/ProductCard";
 
-// Backend URL .env.local থেকে আসছে, hardcode নয়।
-// .env.local-এ যোগ করুন:
-//   NEXT_PUBLIC_APP_URL=http://localhost:5000
-// (নোট: Express backend PORT=3000 রাখলে Next.js dev server-এর সাথে
-//  পোর্ট কনফ্লিক্ট হবে, কারণ Next.js ডিফল্টভাবে 3000-এই চলে।
-//  তাই backend-এর .env-এ PORT=5000 করে নেওয়াই ভালো।)
 const API_URL =
   process.env.NEXT_PUBLIC_APP_URL || "https://ecommerce-server-woad.vercel.app";
 
@@ -18,34 +12,39 @@ export default function ProductsPage() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("সব");
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // ✅ Refresh button - নতুন product দেখার জন্য
+  const handleRefresh = () => {
+    setRefreshKey((prev) => prev + 1);
+  };
 
   useEffect(() => {
     async function loadProducts() {
       try {
         setLoading(true);
+        setError("");
         const res = await fetch(`${API_URL}/api/products`);
         if (!res.ok) throw new Error("প্রোডাক্ট লোড করা যায়নি");
         const data = await res.json();
 
-        // FIX: backend response array () নাকি { products: [...] } object,
-        // দুই ক্ষেত্রেই handle করা হচ্ছে যাতে products.map() ভাঙ্গে না
+        // FIX: backend response array () নাকি { products: [...] } object
         const productList: Product[] = Array.isArray(data)
           ? data
           : data.products || [];
 
         setProducts(productList);
       } catch (err) {
-        setError(
-          "প্রোডাক্ট লোড করতে সমস্যা হয়েছে। ব্যাকএন্ড সার্ভার চালু আছে কিনা দেখুন।",
-        );
+        setError("প্রোডাক্ট লোড করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।");
+        console.error("Error loading products:", err);
       } finally {
         setLoading(false);
       }
     }
     loadProducts();
-  }, []);
+  }, [refreshKey]);
 
-  // প্রোডাক্ট থেকেই ইউনিক ক্যাটাগরি বের করা হচ্ছে, আলাদা API কল লাগছে না
+  // প্রোডাক্ট থেকেই ইউনিক ক্যাটাগরি বের করা
   const categories = useMemo(() => {
     const unique = Array.from(new Set(products.map((p) => p.category)));
     return ["সব", ...unique];
@@ -68,13 +67,33 @@ export default function ProductsPage() {
       <div className="mx-auto max-w-7xl">
         {/* header */}
         <div className="mb-8 flex flex-col gap-6 md:mb-10 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="mb-2 font-[family-name:var(--font-mono)] text-xs uppercase tracking-widest text-[#5B6B4C]">
-              শপ
-            </p>
-            <h1 className="font-[family-name:var(--font-display)] text-3xl md:text-4xl">
-              সব প্রোডাক্ট
-            </h1>
+          <div className="flex items-center gap-3">
+            <div>
+              <h1 className="font-[family-name:var(--font-display)] text-3xl md:text-4xl">
+                সব প্রোডাক্ট
+              </h1>
+            </div>
+            {/* ✅ Refresh Button */}
+            <button
+              onClick={handleRefresh}
+              disabled={loading}
+              className="rounded-full border border-[#202A44]/30 bg-[#FFFDF8] p-2 hover:bg-[#202A44]/5 disabled:opacity-50 transition-all"
+              title="নতুন প্রোডাক্ট রিফ্রেশ করুন"
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className={`${loading ? "animate-spin" : ""}`}
+              >
+                <polyline points="23 4 23 10 17 10" />
+                <polyline points="1 20 1 14 7 14" />
+                <path d="M3.51 9a9 9 0 0114.85-3.36M20.49 15a9 9 0 01-14.85 3.36" />
+              </svg>
+            </button>
           </div>
 
           <div className="relative w-full md:w-72">
@@ -111,8 +130,9 @@ export default function ProductsPage() {
         {/* states: loading / error / empty / grid */}
         {loading && (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {/* ✅ FIX: Skeleton key - stable key ব্যবহার করছি */}
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="animate-pulse">
+              <div key={`skeleton-${i}`} className="animate-pulse">
                 <div className="aspect-square rounded-2xl bg-[#202A44]/10" />
                 <div className="mt-3 h-3 w-1/2 rounded bg-[#202A44]/10" />
                 <div className="mt-2 h-4 w-3/4 rounded bg-[#202A44]/10" />
@@ -123,7 +143,13 @@ export default function ProductsPage() {
 
         {!loading && error && (
           <div className="rounded-2xl border border-[#B1502F]/30 bg-[#B1502F]/5 p-8 text-center">
-            <p className="text-sm text-[#B1502F]">{error}</p>
+            <p className="text-sm text-[#B1502F] mb-4">{error}</p>
+            <button
+              onClick={handleRefresh}
+              className="rounded-full border border-[#B1502F] bg-[#B1502F]/10 px-4 py-2 text-sm text-[#B1502F] hover:bg-[#B1502F]/20 transition-colors"
+            >
+              আবার চেষ্টা করুন
+            </button>
           </div>
         )}
 
@@ -137,8 +163,12 @@ export default function ProductsPage() {
 
         {!loading && !error && filtered.length > 0 && (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {/* ✅ FIX: Proper unique key - _id ব্যবহার করছি (best practice) */}
             {filtered.map((product) => (
-              <ProductCard key={product.slug} product={product} />
+              <ProductCard
+                key={product._id || product.slug}
+                product={product}
+              />
             ))}
           </div>
         )}

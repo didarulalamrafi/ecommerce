@@ -1,4 +1,6 @@
-export type Role = "user" | "admin";
+// types/index.ts
+
+export type Role = "user" | "seller" | "admin";
 
 export interface User {
   id?: string;
@@ -12,6 +14,14 @@ export interface User {
   createdAt?: string;
 }
 
+export type ProductStatus = "pending" | "approved" | "rejected";
+
+export interface ProductSeller {
+  _id: string;
+  name: string;
+  email?: string;
+}
+
 export interface Product {
   _id: string;
   name: string;
@@ -20,6 +30,12 @@ export interface Product {
   price: number;
   image?: string;
   description?: string;
+  artisan?: string;
+  tag?: string;
+  stock?: number;
+  status?: ProductStatus;
+  adminNote?: string;
+  seller?: ProductSeller | string;
   createdAt?: string;
   [key: string]: unknown;
 }

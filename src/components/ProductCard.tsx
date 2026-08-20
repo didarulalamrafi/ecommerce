@@ -6,17 +6,13 @@ import { useRouter } from "next/navigation";
 import { useCart } from "../context/CartContext";
 import { useSession } from "../lib/auth-client";
 
-/**
- * Product shape — matches the dummy documents seeded in MongoDB.
- * Exported so the products page (and anywhere else) can reuse the type.
- */
 export interface Product {
   _id?: string;
   name: string;
   slug: string;
   category: string;
   brand: string;
-  sellerName?: string; // NEW: যে seller প্রোডাক্টটি অ্যাড করেছে তার নাম
+  sellerName?: string;
   price: number;
   oldPrice?: number;
   discount?: number;
@@ -24,8 +20,8 @@ export interface Product {
   image: string;
   images?: string[];
   stock: number;
-  rating: number;
-  reviewCount: number;
+  rating?: number; // ✅ Optional
+  reviewCount?: number; // ✅ Optional
   inCart?: boolean;
   isFeatured?: boolean;
   tags?: string[];
@@ -38,32 +34,48 @@ export default function ProductCard({ product }: { product: Product }) {
 
   const [inCart, setInCart] = useState(product.inCart ?? false);
   const [adding, setAdding] = useState(false);
-  const lowStock = product.stock > 0 && product.stock <= 10;
-  const outOfStock = product.stock === 0;
+
+  // ✅ FIX: Default values for optional fields
+  const stock = product.stock ?? 0;
+  const rating = product.rating ?? 0;
+  const reviewCount = product.reviewCount ?? 0;
+  const price = product.price ?? 0;
+  const discount = product.discount ?? 0;
+  const oldPrice = product.oldPrice ?? 0;
+
+  const lowStock = stock > 0 && stock <= 10;
+  const outOfStock = stock === 0;
+
+  // ✅ FIX: Empty image check
+  const imageUrl =
+    product.image && product.image.trim() !== ""
+      ? product.image
+      : "/images/placeholder.png";
 
   async function handleCartClick() {
-    // লগইন করা না থাকলে লগইন পেজে পাঠিয়ে দেওয়া হবে
     if (!session) {
       router.push("/login");
       return;
     }
     if (outOfStock || adding) return;
 
-    // ইতিমধ্যে কার্টে থাকলে টগল করা হচ্ছে না — শুধু যোগ করা যাবে,
-    // সরানোর জন্য কার্ট পেজে যেতে হবে
     if (inCart) return;
 
     setAdding(true);
     const ok = await addToCart({
       productId: product._id ?? product.slug,
       name: product.name,
-      price: product.price,
-      image: product.image,
+      price: price,
+      image: imageUrl,
       qty: 1,
     });
     setAdding(false);
     if (ok) setInCart(true);
   }
+
+  // ✅ Seller name display
+  const sellerDisplay = product.sellerName || product.brand || "অজানা";
+  const isSellerName = !!product.sellerName;
 
   return (
     <div className="group flex flex-col overflow-hidden rounded-2xl border border-[#202A44]/10 bg-[#FFFDF8] transition-shadow hover:shadow-lg">
@@ -73,18 +85,23 @@ export default function ProductCard({ product }: { product: Product }) {
         className="relative block aspect-square w-full overflow-hidden bg-[#F6F1E9]"
       >
         <Image
-          src={product.image}
+          src={imageUrl}
           alt={product.name}
           fill
           className="object-cover transition-transform duration-500 group-hover:scale-105"
           sizes="(max-width: 768px) 50vw, 25vw"
+          onError={(e) => {
+            // ✅ Image load fail হলে placeholder
+            const img = e.target as HTMLImageElement;
+            img.src = "/images/placeholder.png";
+          }}
         />
 
         {/* badges */}
         <div className="absolute left-2 top-2 flex flex-col gap-1.5">
-          {!!product.discount && (
+          {discount > 0 && (
             <span className="rounded-full bg-[#B1502F] px-2 py-0.5 font-[family-name:var(--font-mono)] text-[11px] font-medium text-white">
-              -{product.discount}%
+              -{discount}%
             </span>
           )}
           {product.isFeatured && (
@@ -105,10 +122,15 @@ export default function ProductCard({ product }: { product: Product }) {
 
       {/* content */}
       <div className="flex flex-1 flex-col gap-2 p-3.5">
-        {/* NEW: এখন brand-এর বদলে যে seller প্রোডাক্টটি বিক্রি করছে তার নাম দেখানো হচ্ছে */}
-        <p className="font-[family-name:var(--font-mono)] text-[11px] uppercase tracking-wide text-[#5B6B4C]">
-          {product.sellerName || product.brand}
-        </p>
+        {/* ✅ Seller/Brand name - ছোট করে দেখাচ্ছি */}
+        <div className="flex items-center gap-1">
+          <p className="font-[family-name:var(--font-mono)] text-[9px] uppercase tracking-wide text-[#5B6B4C]">
+            {isSellerName ? "বিক্রেতা:" : "ব্র্যান্ড:"}
+          </p>
+          <p className="font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-wide text-[#5B6B4C]/80 line-clamp-1">
+            {sellerDisplay}
+          </p>
+        </div>
 
         <a
           href={`/products/${product.slug}`}
@@ -117,28 +139,30 @@ export default function ProductCard({ product }: { product: Product }) {
           {product.name}
         </a>
 
-        {/* rating */}
-        <div className="flex items-center gap-1.5 text-xs text-[#202A44]/60">
-          <StarIcon />
-          <span>{product.rating.toFixed(1)}</span>
-          <span className="text-[#202A44]/30">·</span>
-          <span>{product.reviewCount} রিভিউ</span>
-        </div>
+        {/* ✅ rating - default value দিয়েছি */}
+        {(rating > 0 || reviewCount > 0) && (
+          <div className="flex items-center gap-1.5 text-xs text-[#202A44]/60">
+            <StarIcon />
+            <span>{rating.toFixed(1)}</span>
+            <span className="text-[#202A44]/30">·</span>
+            <span>{reviewCount} রিভিউ</span>
+          </div>
+        )}
 
         {/* price + stock */}
         <div className="mt-auto flex items-end justify-between pt-2">
           <div className="flex flex-col">
             <span className="font-[family-name:var(--font-mono)] text-base font-medium text-[#202A44]">
-              ৳{product.price.toLocaleString("bn-BD")}
+              ৳{price.toLocaleString("bn-BD")}
             </span>
-            {!!product.oldPrice && (
+            {oldPrice > 0 && (
               <span className="font-[family-name:var(--font-mono)] text-xs text-[#202A44]/40 line-through">
-                ৳{product.oldPrice.toLocaleString("bn-BD")}
+                ৳{oldPrice.toLocaleString("bn-BD")}
               </span>
             )}
             {lowStock && (
               <span className="mt-0.5 text-[11px] text-[#B1502F]">
-                মাত্র {product.stock}টি বাকি
+                মাত্র {stock}টি বাকি
               </span>
             )}
           </div>
@@ -161,8 +185,6 @@ export default function ProductCard({ product }: { product: Product }) {
   );
 }
 
-/* ---------- inline icons ---------- */
-
 function StarIcon() {
   return (
     <svg
@@ -177,6 +199,7 @@ function StarIcon() {
     </svg>
   );
 }
+
 function CartPlusIcon() {
   return (
     <svg
@@ -194,6 +217,7 @@ function CartPlusIcon() {
     </svg>
   );
 }
+
 function CheckIcon() {
   return (
     <svg

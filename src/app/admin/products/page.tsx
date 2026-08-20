@@ -8,6 +8,9 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
+  getPendingProducts,
+  approveProduct,
+  rejectProduct,
 } from "@/services/products";
 import { ApiError } from "@/lib/api";
 import type { Product } from "@/types";
@@ -27,7 +30,6 @@ export default function AdminProductsPage() {
   const { data: session, isPending: authLoading } = useSession();
   const router = useRouter();
 
-  // ✅ এভাবে safely access করো
   const isAdmin = session?.user?.role === "admin";
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -36,14 +38,27 @@ export default function AdminProductsPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
 
-  // শুধু admin দেখতে পারবে
+  // Pending (review-এ থাকা) প্রোডাক্ট
+  const [pending, setPending] = useState<Product[]>([]);
+  const [pendingLoading, setPendingLoading] = useState(true);
+  const [pendingNotes, setPendingNotes] = useState<Record<string, string>>({});
+  const [actioningId, setActioningId] = useState<string | null>(null);
+
   useEffect(() => {
     if (!authLoading && (!session?.user || !isAdmin)) {
       router.push("/");
     }
   }, [authLoading, session, isAdmin, router]);
 
+  useEffect(() => {
+    if (isAdmin) {
+      loadProducts();
+      loadPending();
+    }
+  }, [isAdmin]);
+
   async function loadProducts() {
+    setLoading(true);
     try {
       const res = await getProducts({ limit: 50 });
       setProducts(res.products);
@@ -54,9 +69,59 @@ export default function AdminProductsPage() {
     }
   }
 
-  useEffect(() => {
-    if (isAdmin) loadProducts();
-  }, [isAdmin]);
+  async function loadPending() {
+    setPendingLoading(true);
+    try {
+      const res = await getPendingProducts();
+      setPending(res.products);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setPendingLoading(false);
+    }
+  }
+
+  function handleNoteChange(id: string, value: string) {
+    setPendingNotes((prev) => ({ ...prev, [id]: value }));
+  }
+
+  async function handleApprove(id: string) {
+    setActioningId(id);
+    try {
+      await approveProduct(id, pendingNotes[id]?.trim() || undefined);
+      setPendingNotes((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      await loadPending();
+      await loadProducts();
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "অ্যাপ্রুভ করা যায়নি");
+    } finally {
+      setActioningId(null);
+    }
+  }
+
+  async function handleReject(id: string) {
+    if (!confirm("এই প্রোডাক্টটি রিজেক্ট করতে চান? এটি ডিলিট হয়ে যাবে।"))
+      return;
+
+    setActioningId(id);
+    try {
+      await rejectProduct(id, pendingNotes[id]?.trim() || undefined);
+      setPendingNotes((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      await loadPending();
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "রিজেক্ট করা যায়নি");
+    } finally {
+      setActioningId(null);
+    }
+  }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -133,6 +198,83 @@ export default function AdminProductsPage() {
       <h1 className="mb-8 font-[family-name:var(--font-display)] text-3xl text-[#202A44] dark:text-[#F6F1E9]">
         প্রোডাক্ট ম্যানেজমেন্ট
       </h1>
+
+      {/* Pending review section */}
+      <div className="mb-10 rounded-2xl border border-[#E2A227]/40 bg-[#E2A227]/5 p-6">
+        <h2 className="mb-4 text-lg font-semibold text-[#202A44] dark:text-[#F6F1E9]">
+          রিভিউ এর অপেক্ষায় ({pending.length})
+        </h2>
+
+        {pendingLoading ? (
+          <p className="text-sm text-[#202A44]/60 dark:text-[#F6F1E9]/60">
+            লোড হচ্ছে...
+          </p>
+        ) : pending.length === 0 ? (
+          <p className="text-sm text-[#202A44]/60 dark:text-[#F6F1E9]/60">
+            রিভিউ এর জন্য কোনো প্রোডাক্ট নেই
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {pending.map((p) => (
+              <div
+                key={p._id}
+                className="rounded-xl border border-[#202A44]/10 bg-white/60 p-4 dark:border-[#F6F1E9]/10 dark:bg-white/5"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={p.image}
+                      alt={p.name}
+                      className="h-14 w-14 rounded-lg object-cover"
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-[#202A44] dark:text-[#F6F1E9]">
+                        {p.name}
+                      </p>
+                      <p className="text-xs text-[#202A44]/50 dark:text-[#F6F1E9]/50">
+                        {p.category} • ৳{p.price} • স্টক:{" "}
+                        {String(p.stock ?? "-")}
+                      </p>
+                      {p.seller && (
+                        <p className="mt-1 text-xs text-[#202A44]/40 dark:text-[#F6F1E9]/40">
+                          বিক্রেতা:{" "}
+                          {(p.seller as { name?: string })?.name ?? "N/A"}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <textarea
+                  value={pendingNotes[p._id] ?? ""}
+                  onChange={(e) => handleNoteChange(p._id, e.target.value)}
+                  placeholder="সেলারের জন্য নোট (ঐচ্ছিক)"
+                  rows={2}
+                  className={`${inputClass} mt-3 resize-none`}
+                />
+
+                <div className="mt-3 flex gap-2">
+                  <button
+                    onClick={() => handleApprove(p._id)}
+                    disabled={actioningId === p._id}
+                    className="rounded-full bg-[#1F7A4D] px-4 py-1.5 text-xs text-white transition hover:opacity-90 disabled:opacity-50"
+                  >
+                    {actioningId === p._id ? "..." : "অ্যাপ্রুভ"}
+                  </button>
+                  <button
+                    onClick={() => handleReject(p._id)}
+                    disabled={actioningId === p._id}
+                    className="rounded-full border border-[#B1502F]/30 px-4 py-1.5 text-xs text-[#B1502F] transition hover:bg-[#B1502F]/10 disabled:opacity-50 dark:text-[#E2A227]"
+                  >
+                    {actioningId === p._id ? "..." : "রিজেক্ট"}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       <div className="grid gap-8 lg:grid-cols-[380px_1fr]">
         {/* Add/Edit form */}
@@ -228,8 +370,12 @@ export default function AdminProductsPage() {
           </div>
         </form>
 
-        {/* Product list */}
+        {/* Approved product list */}
         <div className="space-y-3">
+          <h2 className="text-lg font-semibold text-[#202A44] dark:text-[#F6F1E9]">
+            অ্যাপ্রুভড প্রোডাক্ট (সাইটে দেখা যাচ্ছে)
+          </h2>
+
           {loading ? (
             <p className="text-sm text-[#202A44]/60 dark:text-[#F6F1E9]/60">
               লোড হচ্ছে...

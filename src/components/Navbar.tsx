@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useSession, signOut, AuthUser } from "../lib/auth-client";
 import { useCart } from "../context/CartContext";
 
 /**
- * Sticky navbar for Maati — v8
- * UPDATED: cart count এখন shared CartContext থেকে আসছে, লোকাল dummy state না।
- * ProductCard থেকে কার্টে কিছু যোগ করলে এখানকার badge সাথে সাথে আপডেট হবে।
+ * Sticky navbar for Maati — v9
+ * UPDATED: সার্চ এখন সত্যিকারের কাজ করে (আগে শুধু UI ছিল, কোনো state/submit ছিল না)।
+ * ডেস্কটপ ও মোবাইল দুই জায়গাতেই — Enter চাপলে বা সার্চ আইকনে ক্লিক করলে
+ * /products?q=... এ নিয়ে যাবে, ঠিক আগে home page-এর সার্চের মতোই।
  */
 
 const cx = (...c: (string | false | undefined)[]) =>
@@ -40,12 +42,14 @@ const CATEGORIES = [
 ];
 
 export default function Navbar() {
+  const router = useRouter();
   const { data: session, isPending } = useSession();
   const user = session?.user;
-  const { cartCount } = useCart(); // NEW: shared cart state
+  const { cartCount } = useCart();
 
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [isDark, setIsDark] = useState(false);
@@ -76,6 +80,28 @@ export default function Navbar() {
     });
   };
 
+  // ✅ NEW: সার্চ সাবমিট হ্যান্ডলার — desktop ও mobile দুই ফর্মই এটা শেয়ার করে
+  function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    router.push(
+      search.trim()
+        ? `/products?q=${encodeURIComponent(search.trim())}`
+        : "/products",
+    );
+    setOpen(false);
+  }
+
+  // ডেস্কটপে সার্চ আইকনে ক্লিক করলে: বন্ধ থাকলে খুলবে, খোলা থাকলে সাবমিট হবে
+  function handleDesktopSearchIconClick() {
+    if (!searchOpen) {
+      setSearchOpen(true);
+      return;
+    }
+    if (search.trim()) {
+      router.push(`/products?q=${encodeURIComponent(search.trim())}`);
+    }
+  }
+
   return (
     <header
       className={cx(
@@ -86,14 +112,13 @@ export default function Navbar() {
       <div
         className={cx(
           "mx-auto flex max-w-7xl items-center justify-between px-5 transition-all duration-300 md:px-8",
-          scrolled ? "py-2.5" : "py-4",
+          scrolled ? "py-0.5" : "py-1",
         )}
       >
         <Link href="/" className="flex items-center gap-2">
           <span className="font-[family-name:var(--font-display)] text-2xl tracking-tight text-[#202A44] dark:text-[#F6F1E9]">
-            Maati
+            Mela
           </span>
-          <span className="hidden h-1.5 w-1.5 rounded-full bg-[#E2A227] sm:inline-block" />
         </Link>
 
         <nav className="hidden items-center gap-8 text-sm font-medium md:flex">
@@ -140,9 +165,11 @@ export default function Navbar() {
         </nav>
 
         <div className="hidden items-center gap-1 md:flex">
-          <div className="flex items-center">
+          <form onSubmit={handleSearch} className="flex items-center">
             <input
               type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               placeholder="খুঁজুন..."
               className={cx(
                 styles.input,
@@ -150,13 +177,14 @@ export default function Navbar() {
               )}
             />
             <button
+              type="button"
               aria-label="সার্চ করুন"
-              onClick={() => setSearchOpen((v) => !v)}
+              onClick={handleDesktopSearchIconClick}
               className={styles.iconBtn}
             >
               <SearchIcon />
             </button>
-          </div>
+          </form>
 
           <button
             aria-label={isDark ? "লাইট মোড চালু করুন" : "ডার্ক মোড চালু করুন"}
@@ -247,11 +275,25 @@ export default function Navbar() {
             </Link>
           )}
 
-          <input
-            type="text"
-            placeholder="খুঁজুন..."
-            className={cx(styles.input, "mb-3 w-full px-4 opacity-100")}
-          />
+          <form
+            onSubmit={handleSearch}
+            className="mb-3 flex items-center gap-2"
+          >
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="খুঁজুন..."
+              className={cx(styles.input, "w-full px-4 opacity-100")}
+            />
+            <button
+              type="submit"
+              aria-label="সার্চ করুন"
+              className={cx(styles.iconBtn, "shrink-0")}
+            >
+              <SearchIcon />
+            </button>
+          </form>
 
           <Link href={"/products"}>
             <span className="mt-1 px-1 text-lg uppercase tracking-wide text-black dark:text-[#F6F1E9]/40">

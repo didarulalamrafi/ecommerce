@@ -29,12 +29,15 @@ export function getCategories() {
   return api.get<string[]>("/api/categories");
 }
 
-// NEW: seller/admin dashboard এ নিজের বানানো প্রোডাক্ট লিস্ট
+// seller dashboard এ নিজের বানানো প্রোডাক্ট লিস্ট (pending/approved/rejected সব স্ট্যাটাস সহ)
 export function getMyProducts(page = 1, limit = 50) {
-  return api.get<ProductListResponse>(`/api/products/mine?page=${page}&limit=${limit}`);
+  return api.get<ProductListResponse>(
+    `/api/products/mine?page=${page}&limit=${limit}`,
+  );
 }
 
-// admin/seller — verifyToken + role check backend এ হয়, এখানে শুধু কল
+// seller/admin — verifyToken + role check backend এ হয়, এখানে শুধু কল
+// seller ক্রিয়েট করলে ব্যাকএন্ডে status ডিফল্ট "pending" সেট হবে
 export function createProduct(product: Omit<Product, "_id">) {
   return api.post<Product>("/api/products", product);
 }
@@ -45,4 +48,26 @@ export function updateProduct(id: string, product: Partial<Product>) {
 
 export function deleteProduct(id: string) {
   return api.delete<{ message: string }>(`/api/products/${id}`);
+}
+
+// ---- Admin review (seller-submitted প্রোডাক্ট) ----
+interface GetPendingParams {
+  page?: number;
+  limit?: number;
+}
+export function getPendingProducts(params: GetPendingParams = {}) {
+  const query = new URLSearchParams();
+  if (params.page) query.set("page", String(params.page));
+  if (params.limit) query.set("limit", String(params.limit));
+
+  const qs = query.toString();
+  return api.get<ProductListResponse>(`/api/products/pending${qs ? `?${qs}` : ""}`);
+}
+
+export function approveProduct(id: string, note?: string) {
+  return api.patch<{ message: string }>(`/api/products/${id}/approve`, { note });
+}
+
+export function rejectProduct(id: string, note?: string) {
+  return api.patch<{ message: string }>(`/api/products/${id}/reject`, { note });
 }
