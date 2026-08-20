@@ -2,19 +2,15 @@
 
 import { useEffect, useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { API_URL, useAuth } from "@/lib/useAuth";
-
-interface Product {
-  _id: string;
-  name: string;
-  nameEn?: string;
-  artisan?: string;
-  price: number;
-  image: string;
-  category: string;
-  tag?: string;
-  stock: number;
-}
+import { useSession } from "@/lib/auth-client";
+import {
+  getProducts,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+} from "@/services/products";
+import { ApiError } from "@/lib/api";
+import type { Product } from "@/types";
 
 const EMPTY_FORM = {
   name: "",
@@ -28,8 +24,12 @@ const EMPTY_FORM = {
 };
 
 export default function AdminProductsPage() {
-  const { user, loading: authLoading, isAdmin } = useAuth();
+  // UPDATED: আগে কাস্টম useAuth() hook ব্যবহার হতো, এখন better-auth এর
+  // useSession() — session.user.role চেক করে admin কিনা বোঝা হচ্ছে
+  const { data: session, isPending: authLoading } = useSession();
   const router = useRouter();
+
+  const isAdmin = session?.user?.role === "admin";
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,18 +37,25 @@ export default function AdminProductsPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
 
-  // NEW: শুধু admin এই পেজ দেখতে পারবে — user না হলে বা admin না হলে হোমে পাঠিয়ে দেওয়া হচ্ছে
+  // শুধু admin এই পেজ দেখতে পারবে — user না হলে বা admin না হলে হোমে
   useEffect(() => {
-    if (!authLoading && (!user || !isAdmin)) {
+    if (!authLoading && (!session?.user || !isAdmin)) {
       router.push("/");
     }
-  }, [authLoading, user, isAdmin, router]);
+  }, [authLoading, session, isAdmin, router]);
 
-  function loadProducts() {
-    fetch(`${API_URL}/api/products`)
-      .then((r) => r.json())
-      .then(setProducts)
-      .finally(() => setLoading(false));
+  // UPDATED: raw fetch এর বদলে services/products.ts এর getProducts —
+  // pagination response আসে ({ products, pagination }), তাই .products
+  // বের করে নেওয়া হচ্ছে। admin panel এ একসাথে সব দেখাতে limit বাড়ানো হলো।
+  async function loadProducts() {
+    try {
+      const res = await getProduct({ limit: 50 });
+      setProducts(res.products);
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "প্রোডাক্ট লোড করা যায়নি");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -64,12 +71,12 @@ export default function AdminProductsPage() {
     setForm({
       name: product.name,
       nameEn: product.nameEn || "",
-      artisan: product.artisan || "",
+      artisan: (product.artisan as string) || "",
       price: String(product.price),
-      image: product.image,
+      image: product.image || "",
       category: product.category,
-      tag: product.tag || "",
-      stock: String(product.stock),
+      tag: (product.tag as string) || "",
+      stock: String((product.stock as number) ?? ""),
     });
   }
 
@@ -78,6 +85,9 @@ export default function AdminProductsPage() {
     setForm(EMPTY_FORM);
   }
 
+  // UPDATED: raw fetch এর বদলে services/products.ts এর createProduct/
+  // updateProduct — credentials/base URL/error parsing সব lib/api.ts এ
+  // কেন্দ্রীভূত, তাই এখানে আলাদা করে headers/credentials লিখতে হচ্ছে না
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -89,24 +99,15 @@ export default function AdminProductsPage() {
     };
 
     try {
-      const url = editingId
-        ? `${API_URL}/api/products/${editingId}`
-        : `${API_URL}/api/products`;
-      const method = editingId ? "PUT" : "POST";
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        credentials: "include", // admin কুকি পাঠাতে হবে, নাহলে 401/403 আসবে
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) throw new Error();
-
+      if (editingId) {
+        await updateProduct(editingId, payload);
+      } else {
+        await createProduct(payload);
+      }
       resetForm();
-      loadProducts();
-    } catch {
-      alert("প্রোডাক্ট সেভ করা যায়নি");
+      await loadProducts();
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "প্রোডাক্ট সেভ করা যায়নি");
     } finally {
       setSaving(false);
     }
@@ -115,11 +116,12 @@ export default function AdminProductsPage() {
   async function handleDelete(id: string) {
     if (!confirm("এই প্রোডাক্টটি ডিলিট করতে চান?")) return;
 
-    await fetch(`${API_URL}/api/products/${id}`, {
-      method: "DELETE",
-      credentials: "include",
-    });
-    loadProducts();
+    try {
+      await deleteProduct(id);
+      await loadProducts();
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "ডিলিট করা যায়নি");
+    }
   }
 
   if (authLoading || !isAdmin) {
@@ -263,7 +265,7 @@ export default function AdminProductsPage() {
                       {p.name}
                     </p>
                     <p className="text-xs text-[#202A44]/50 dark:text-[#F6F1E9]/50">
-                      {p.category} • ৳{p.price} • স্টক: {p.stock}
+                      {p.category} • ৳{p.price} • স্টক: {String(p.stock ?? "-")}
                     </p>
                   </div>
                 </div>

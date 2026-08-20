@@ -1,280 +1,284 @@
 "use client";
 
-// app/seller/dashboard/page.tsx e eita boshao
-// Assumption: NEXT_PUBLIC_API_URL diye backend call korcho, Better Auth session cookie
-// credentials: "include" diye automatically jabe
+import { useEffect, useState, FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "@/lib/auth-client";
+import {
+  getMyProducts,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+} from "@/services/products";
+import { ApiError } from "@/lib/api";
+import type { Product } from "@/types";
 
-import { useEffect, useState } from "react";
+const EMPTY_FORM = {
+  name: "",
+  nameEn: "",
+  artisan: "",
+  price: "",
+  image: "",
+  category: "",
+  tag: "",
+  stock: "",
+};
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+// admin/products/page.tsx এর প্রায় হুবহু কপি — পার্থক্য দুইটা জায়গায়:
+// ১. role check করে "seller" (admin ও ঢুকতে পারবে চাইলে নিচে বদলাও)
+// ২. getProducts() এর বদলে getMyProducts() — শুধু নিজের প্রোডাক্ট আসবে
+export default function SellerProductsPage() {
+  const { data: session, isPending: authLoading } = useSession();
+  const router = useRouter();
 
-interface Product {
-  _id: string;
-  name: string;
-  price: number;
-  stock: number;
-  image: string;
-}
+  const role = session?.user?.role;
+  const canAccess = role === "seller" || role === "admin";
 
-interface CartInfo {
-  totalInCarts: number;
-  cartCount: number;
-}
-
-interface Stats {
-  totalProducts: number;
-  totalAddedToCart: number;
-  cartInfoMap: Record<string, CartInfo>;
-}
-
-export default function SellerDashboard() {
   const [products, setProducts] = useState<Product[]>([]);
-  const [stats, setStats] = useState<Stats>({
-    totalProducts: 0,
-    totalAddedToCart: 0,
-    cartInfoMap: {},
-  });
   const [loading, setLoading] = useState(true);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
-  const [error, setError] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    if (!authLoading && (!session?.user || !canAccess)) {
+      router.push("/");
+    }
+  }, [authLoading, session, canAccess, router]);
 
-  const fetchDashboardData = async () => {
+  async function loadProducts() {
     try {
-      setLoading(true);
-      const [productsRes, statsRes] = await Promise.all([
-        fetch(`${API_URL}/api/seller/products`, { credentials: "include" }),
-        fetch(`${API_URL}/api/seller/products/stats`, {
-          credentials: "include",
-        }),
-      ]);
-
-      const productsData = await productsRes.json();
-      const statsData = await statsRes.json();
-
-      if (!productsData.success) throw new Error(productsData.message);
-
-      setProducts(productsData.products);
-      setStats(statsData);
+      const res = await getMyProducts();
+      setProducts(res.products);
     } catch (err) {
-      setError("Products load korte problem hoyeche");
-      console.error(err);
+      alert(err instanceof ApiError ? err.message : "প্রোডাক্ট লোড করা যায়নি");
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const handleDelete = async (id: string) => {
+  useEffect(() => {
+    if (canAccess) loadProducts();
+  }, [canAccess]);
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  }
+
+  function startEdit(product: Product) {
+    setEditingId(product._id);
+    setForm({
+      name: product.name,
+      nameEn: product.nameEn || "",
+      artisan: (product.artisan as string) || "",
+      price: String(product.price),
+      image: product.image || "",
+      category: product.category,
+      tag: (product.tag as string) || "",
+      stock: String((product.stock as number) ?? ""),
+    });
+  }
+
+  function resetForm() {
+    setEditingId(null);
+    setForm(EMPTY_FORM);
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+
+    const payload = {
+      ...form,
+      price: Number(form.price),
+      stock: Number(form.stock),
+    };
+
     try {
-      const res = await fetch(`${API_URL}/api/seller/products/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.message);
-
-      setProducts((prev) => prev.filter((p) => p._id !== id));
-      setDeleteTarget(null);
+      if (editingId) {
+        // নিজের প্রোডাক্ট না হলে backend 403 দেবে (verifyProductOwnerOrAdmin)
+        await updateProduct(editingId, payload);
+      } else {
+        await createProduct(payload); // backend নিজে থেকেই sellerId বসিয়ে দেয়
+      }
+      resetForm();
+      await loadProducts();
     } catch (err) {
-      setError("Delete korte problem hoyeche");
+      alert(err instanceof ApiError ? err.message : "প্রোডাক্ট সেভ করা যায়নি");
+    } finally {
+      setSaving(false);
     }
-  };
+  }
 
-  const handleUpdate = async (id: string, updatedFields: Partial<Product>) => {
+  async function handleDelete(id: string) {
+    if (!confirm("এই প্রোডাক্টটি ডিলিট করতে চান?")) return;
+
     try {
-      const res = await fetch(`${API_URL}/api/seller/products/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(updatedFields),
-      });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.message);
-
-      setProducts((prev) => prev.map((p) => (p._id === id ? data.product : p)));
-      setEditingProduct(null);
+      await deleteProduct(id);
+      await loadProducts();
     } catch (err) {
-      setError("Update korte problem hoyeche");
+      alert(err instanceof ApiError ? err.message : "ডিলিট করা যায়নি");
     }
-  };
+  }
 
-  if (loading) return <div className="p-6">Loading...</div>;
+  if (authLoading || !canAccess) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center text-[#202A44]/60 dark:text-[#F6F1E9]/60">
+        লোড হচ্ছে...
+      </div>
+    );
+  }
+
+  const inputClass =
+    "w-full rounded-lg border border-[#202A44]/15 bg-white/60 px-3 py-2 text-sm text-[#202A44] outline-none focus:border-[#E2A227] focus:ring-2 focus:ring-[#E2A227]/30 dark:border-[#F6F1E9]/15 dark:bg-white/5 dark:text-[#F6F1E9]";
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Seller Dashboard</h1>
+    <div className="mx-auto max-w-6xl px-5 py-10 md:px-8">
+      <h1 className="mb-8 font-[family-name:var(--font-display)] text-3xl text-[#202A44] dark:text-[#F6F1E9]">
+        আমার প্রোডাক্ট
+      </h1>
 
-      {error && <p className="text-red-500 mb-4">{error}</p>}
+      <div className="grid gap-8 lg:grid-cols-[380px_1fr]">
+        <form
+          onSubmit={handleSubmit}
+          className="h-fit space-y-3 rounded-2xl border border-[#202A44]/10 p-6 dark:border-[#F6F1E9]/10"
+        >
+          <h2 className="mb-2 text-lg font-semibold text-[#202A44] dark:text-[#F6F1E9]">
+            {editingId ? "প্রোডাক্ট এডিট করুন" : "নতুন প্রোডাক্ট যোগ করুন"}
+          </h2>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-        <div className="border rounded-xl p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Total Products</p>
-          <p className="text-3xl font-bold">{stats.totalProducts}</p>
-        </div>
-        <div className="border rounded-xl p-5 shadow-sm">
-          <p className="text-sm text-gray-500">
-            Products Added to Cart (by users)
-          </p>
-          <p className="text-3xl font-bold">{stats.totalAddedToCart}</p>
-        </div>
-      </div>
+          <input
+            name="name"
+            value={form.name}
+            onChange={handleChange}
+            placeholder="নাম (বাংলা)"
+            required
+            className={inputClass}
+          />
+          <input
+            name="nameEn"
+            value={form.nameEn}
+            onChange={handleChange}
+            placeholder="Name (English)"
+            className={inputClass}
+          />
+          <input
+            name="artisan"
+            value={form.artisan}
+            onChange={handleChange}
+            placeholder="কারিগর / বিবরণ"
+            className={inputClass}
+          />
+          <input
+            name="price"
+            type="number"
+            value={form.price}
+            onChange={handleChange}
+            placeholder="দাম (৳)"
+            required
+            className={inputClass}
+          />
+          <input
+            name="image"
+            value={form.image}
+            onChange={handleChange}
+            placeholder="ছবির URL"
+            required
+            className={inputClass}
+          />
+          <input
+            name="category"
+            value={form.category}
+            onChange={handleChange}
+            placeholder="ক্যাটাগরি"
+            required
+            className={inputClass}
+          />
+          <input
+            name="tag"
+            value={form.tag}
+            onChange={handleChange}
+            placeholder="ট্যাগ (যেমন: নতুন, ছাড়)"
+            className={inputClass}
+          />
+          <input
+            name="stock"
+            type="number"
+            value={form.stock}
+            onChange={handleChange}
+            placeholder="স্টক"
+            required
+            className={inputClass}
+          />
 
-      {/* Product list */}
-      <div className="overflow-x-auto border rounded-xl">
-        <table className="w-full text-left">
-          <thead className="bg-gray-50 border-b">
-            <tr>
-              <th className="p-3">Image</th>
-              <th className="p-3">Name</th>
-              <th className="p-3">Price</th>
-              <th className="p-3">Stock</th>
-              <th className="p-3">In Carts</th>
-              <th className="p-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((product) => {
-              const cartInfo: CartInfo = stats.cartInfoMap?.[product._id] || {
-                cartCount: 0,
-                totalInCarts: 0,
-              };
-              return (
-                <tr key={product._id} className="border-b">
-                  <td className="p-3">
-                    <img
-                      src={product.image}
-                      alt={product.name}
-                      className="w-12 h-12 object-cover rounded"
-                    />
-                  </td>
-                  <td className="p-3">{product.name}</td>
-                  <td className="p-3">৳{product.price}</td>
-                  <td className="p-3">{product.stock}</td>
-                  <td className="p-3">
-                    {cartInfo.cartCount} user
-                    {cartInfo.cartCount !== 1 ? "s" : ""} (
-                    {cartInfo.totalInCarts} qty)
-                  </td>
-                  <td className="p-3 space-x-2">
-                    <button
-                      onClick={() => setEditingProduct(product)}
-                      className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => setDeleteTarget(product)}
-                      className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-            {products.length === 0 && (
-              <tr>
-                <td colSpan={6} className="p-6 text-center text-gray-500">
-                  No products yet.
-                </td>
-              </tr>
+          <div className="flex gap-3 pt-2">
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex-1 rounded-full bg-[#202A44] py-2 text-sm text-[#F6F1E9] transition hover:opacity-90 disabled:opacity-50 dark:bg-[#F6F1E9] dark:text-[#202A44]"
+            >
+              {saving ? "সেভ হচ্ছে..." : editingId ? "আপডেট করুন" : "যোগ করুন"}
+            </button>
+            {editingId && (
+              <button
+                type="button"
+                onClick={resetForm}
+                className="rounded-full border border-[#202A44]/20 px-4 py-2 text-sm text-[#202A44] dark:border-[#F6F1E9]/20 dark:text-[#F6F1E9]"
+              >
+                বাতিল
+              </button>
             )}
-          </tbody>
-        </table>
-      </div>
-
-      {editingProduct && (
-        <EditModal
-          product={editingProduct}
-          onClose={() => setEditingProduct(null)}
-          onSave={(fields) => handleUpdate(editingProduct._id, fields)}
-        />
-      )}
-
-      {deleteTarget && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-sm">
-            <p className="mb-4">
-              Delete <strong>{deleteTarget.name}</strong>? Eita fire pawa jabe
-              na.
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setDeleteTarget(null)}
-                className="px-4 py-2 rounded border"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleDelete(deleteTarget._id)}
-                className="px-4 py-2 rounded bg-red-600 text-white"
-              >
-                Delete
-              </button>
-            </div>
           </div>
-        </div>
-      )}
-    </div>
-  );
-}
+        </form>
 
-interface EditModalProps {
-  product: Product;
-  onClose: () => void;
-  onSave: (fields: Partial<Product>) => void;
-}
+        <div className="space-y-3">
+          {loading ? (
+            <p className="text-sm text-[#202A44]/60 dark:text-[#F6F1E9]/60">
+              লোড হচ্ছে...
+            </p>
+          ) : products.length === 0 ? (
+            <p className="text-sm text-[#202A44]/60 dark:text-[#F6F1E9]/60">
+              এখনো কোনো প্রোডাক্ট যোগ করেননি
+            </p>
+          ) : (
+            products.map((p) => (
+              <div
+                key={p._id}
+                className="flex items-center justify-between gap-4 rounded-xl border border-[#202A44]/10 p-3 dark:border-[#F6F1E9]/10"
+              >
+                <div className="flex items-center gap-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={p.image}
+                    alt={p.name}
+                    className="h-14 w-14 rounded-lg object-cover"
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-[#202A44] dark:text-[#F6F1E9]">
+                      {p.name}
+                    </p>
+                    <p className="text-xs text-[#202A44]/50 dark:text-[#F6F1E9]/50">
+                      {p.category} • ৳{p.price} • স্টক: {String(p.stock ?? "-")}
+                    </p>
+                  </div>
+                </div>
 
-function EditModal({ product, onClose, onSave }: EditModalProps) {
-  const [form, setForm] = useState({
-    name: product.name,
-    price: product.price,
-    stock: product.stock,
-  });
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-6 w-full max-w-md">
-        <h2 className="text-lg font-semibold mb-4">Edit Product</h2>
-
-        <label className="block text-sm mb-1">Name</label>
-        <input
-          className="w-full border rounded px-3 py-2 mb-3"
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-        />
-
-        <label className="block text-sm mb-1">Price</label>
-        <input
-          type="number"
-          className="w-full border rounded px-3 py-2 mb-3"
-          value={form.price}
-          onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
-        />
-
-        <label className="block text-sm mb-1">Stock</label>
-        <input
-          type="number"
-          className="w-full border rounded px-3 py-2 mb-4"
-          value={form.stock}
-          onChange={(e) => setForm({ ...form, stock: Number(e.target.value) })}
-        />
-
-        <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="px-4 py-2 rounded border">
-            Cancel
-          </button>
-          <button
-            onClick={() => onSave(form)}
-            className="px-4 py-2 rounded bg-blue-600 text-white"
-          >
-            Save
-          </button>
+                <div className="flex shrink-0 gap-2">
+                  <button
+                    onClick={() => startEdit(p)}
+                    className="rounded-full border border-[#202A44]/20 px-3 py-1 text-xs text-[#202A44] dark:border-[#F6F1E9]/20 dark:text-[#F6F1E9]"
+                  >
+                    এডিট
+                  </button>
+                  <button
+                    onClick={() => handleDelete(p._id)}
+                    className="rounded-full border border-[#B1502F]/30 px-3 py-1 text-xs text-[#B1502F] dark:text-[#E2A227]"
+                  >
+                    ডিলিট
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>
