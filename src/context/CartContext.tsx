@@ -9,7 +9,7 @@ import {
 } from "react";
 import { useSession } from "../lib/auth-client";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:5000";
 
 interface AddToCartInput {
   productId: string;

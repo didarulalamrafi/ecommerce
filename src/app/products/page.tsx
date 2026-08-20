@@ -5,12 +5,12 @@ import ProductCard, { type Product } from "../../components/ProductCard";
 
 // Backend URL .env.local থেকে আসছে, hardcode নয়।
 // .env.local-এ যোগ করুন:
-//   NEXT_PUBLIC_API_URL=http://localhost:5000
+//   NEXT_PUBLIC_APP_URL=http://localhost:5000
 // (নোট: Express backend PORT=3000 রাখলে Next.js dev server-এর সাথে
 //  পোর্ট কনফ্লিক্ট হবে, কারণ Next.js ডিফল্টভাবে 3000-এই চলে।
 //  তাই backend-এর .env-এ PORT=5000 করে নেওয়াই ভালো।)
 const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://ecommerce-server-woad.vercel.app";
+  process.env.NEXT_PUBLIC_APP_URL || "https://ecommerce-server-woad.vercel.app";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);

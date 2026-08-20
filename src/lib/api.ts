@@ -1,10 +1,10 @@
 import { ApiErrorBody } from "@/types";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL;
 
 if (!BASE_URL) {
   console.warn(
-    "⚠️ NEXT_PUBLIC_API_URL সেট করা নেই — .env.local এ যোগ করুন (যেমন: http://localhost:5000)",
+    "⚠️ NEXT_PUBLIC_APP_URL সেট করা নেই — .env.local এ যোগ করুন (যেমন: http://localhost:5000)",
   );
 }
 

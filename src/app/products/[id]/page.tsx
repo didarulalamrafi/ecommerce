@@ -5,9 +5,9 @@ import { useParams, useRouter } from "next/navigation";
 import { useSession } from "../../../lib/auth-client";
 
 // NOTE: প্রোডাক্ট ডেটা বাইরের ব্যাকএন্ড থেকে আসছে, তাই ProductsPage-এর মতোই
-// NEXT_PUBLIC_API_URL env variable ব্যবহার করা হচ্ছে (auth-এর সাথে সম্পর্কিত নয়)।
+// NEXT_PUBLIC_APP_URL env variable ব্যবহার করা হচ্ছে (auth-এর সাথে সম্পর্কিত নয়)।
 const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://ecommerce-server-woad.vercel.app";
+  process.env.NEXT_PUBLIC_APP_URL || "https://ecommerce-server-woad.vercel.app";
 
 interface Product {
   _id: string;

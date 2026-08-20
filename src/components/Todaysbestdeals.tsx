@@ -23,11 +23,11 @@ interface Product {
 /**
  * 👉 তোমার ব্যাকএন্ডের API URL এখানে বসাও।
  * .env.local ফাইলে এভাবে রাখলে ভালো (production এ পাল্টানো সহজ হবে):
- *   NEXT_PUBLIC_API_URL=https://your-backend.onrender.com
+ *   NEXT_PUBLIC_APP_URL=https://your-backend.onrender.com
  * তারপর নিচের লাইনটা এমনিতেই কাজ করবে।
  */
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://ecommerce-server-woad.vercel.app";
+  process.env.NEXT_PUBLIC_APP_URL || "https://ecommerce-server-woad.vercel.app";
 
 // আসল এন্ডপয়েন্ট — তোমার Express রাউট অনুযায়ী পাল্টে নিও, যেমন "/api/products/featured"
 const TODAYS_DEALS_ENDPOINT = `${API_BASE_URL}/api/products?featured=true&limit=8`;
