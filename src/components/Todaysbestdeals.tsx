@@ -5,32 +5,29 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 /**
- * Product shape coming back from your backend (Express + MongoDB).
- * এখানকার ফিল্ডের নাম তোমার MongoDB ডকুমেন্টের সাথে মিলিয়ে দরকার হলে পাল্টে নিও —
- * যেমন যদি ব্যাকএন্ডে `title` হয় `name` এর বদলে, তাহলে এখানেও `title` করে দাও।
+ * ✅ আপডেটেড Product interface - backend actual field names অনুযায়ী
  */
 interface Product {
   _id: string;
   name: string;
-  seller: string;
+  slug: string;
+  brand?: string;
+  sellerName?: string;
   price: number;
-  originalPrice: number;
-  rating: number;
-  reviews: number;
-  img: string;
+  oldPrice?: number; // ✅ Optional - যদি না থাকে 0 ধরবে
+  discount?: number; // ✅ Optional - যদি থাকে ব্যবহার করবে
+  rating?: number;
+  reviewCount?: number;
+  image: string; // ✅ img না, image
+  category?: string;
+  stock?: number;
 }
 
-/**
- * 👉 তোমার ব্যাকএন্ডের API URL এখানে বসাও।
- * .env.local ফাইলে এভাবে রাখলে ভালো (production এ পাল্টানো সহজ হবে):
- *   NEXT_PUBLIC_APP_URL=https://your-backend.onrender.com
- * তারপর নিচের লাইনটা এমনিতেই কাজ করবে।
- */
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_APP_URL || "https://ecommerce-server-woad.vercel.app";
 
-// আসল এন্ডপয়েন্ট — তোমার Express রাউট অনুযায়ী পাল্টে নিও, যেমন "/api/products/featured"
-const TODAYS_DEALS_ENDPOINT = `${API_BASE_URL}/api/products?featured=true&limit=8`;
+// ✅ Featured products বা সব products fetch করছি
+const TODAYS_DEALS_ENDPOINT = `${API_BASE_URL}/api/products?limit=8`;
 
 export default function TodaysBestDeals() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -38,27 +35,27 @@ export default function TodaysBestDeals() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // component mount হওয়ার সাথে সাথে ব্যাকএন্ড থেকে প্রোডাক্ট ফেচ করবে
     async function fetchProducts() {
       try {
         setLoading(true);
         setError(null);
 
         const res = await fetch(TODAYS_DEALS_ENDPOINT, {
-          cache: "no-store", // সবসময় লেটেস্ট ডেটা আনবে, পুরনো ক্যাশড ডেটা না
+          cache: "no-store",
         });
 
         if (!res.ok) {
-          throw new Error(
-            `API থেকে ডেটা আনতে সমস্যা হয়েছে (status: ${res.status})`,
-          );
+          throw new Error(`API Error: ${res.status}`);
         }
 
         const data = await res.json();
 
-        // ধরে নিচ্ছি API সরাসরি প্রোডাক্টের array রিটার্ন করে।
-        // যদি তোমার API `{ products: [...] }` এভাবে wrap করে পাঠায়, তাহলে data.products লিখো।
-        setProducts(Array.isArray(data) ? data : data.products || []);
+        // ✅ FIX: Backend যা structure পাঠায় তা handle করছি
+        const productList: Product[] = Array.isArray(data)
+          ? data
+          : data.products || [];
+
+        setProducts(productList);
       } catch (err) {
         console.error("Failed to fetch today's deals:", err);
         setError("প্রোডাক্ট লোড করতে সমস্যা হয়েছে, একটু পরে আবার চেষ্টা করো।");
@@ -85,12 +82,12 @@ export default function TodaysBestDeals() {
           </Link>
         </div>
 
-        {/* ========== লোডিং অবস্থা: skeleton card দেখাবে ========== */}
+        {/* ========== লোডিং স্কেলেটন ========== */}
         {loading && (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => (
               <div
-                key={i}
+                key={`skeleton-${i}`}
                 className="animate-pulse rounded-2xl bg-[#F5F6F8] p-3"
               >
                 <div className="mb-3 h-36 rounded-xl bg-[#14213D]/10 md:h-44" />
@@ -108,60 +105,88 @@ export default function TodaysBestDeals() {
           </div>
         )}
 
-        {/* ========== ডেটা এসে গেলে খালি চেক ========== */}
+        {/* ========== খালি স্টেট ========== */}
         {!loading && !error && products.length === 0 && (
           <div className="rounded-2xl border border-[#14213D]/10 bg-[#F5F6F8] p-6 text-center text-sm text-[#14213D]/50">
             এখন কোনো ডিল নেই।
           </div>
         )}
 
-        {/* ========== আসল প্রোডাক্ট গ্রিড ========== */}
+        {/* ========== প্রোডাক্ট গ্রিড ========== */}
         {!loading && !error && products.length > 0 && (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {products.map((p) => {
-              const discount = Math.round(
-                ((p.originalPrice - p.price) / p.originalPrice) * 100,
-              );
+              // ✅ FIX: Image URL validation
+              const imageUrl =
+                p.image && p.image.trim() !== ""
+                  ? p.image
+                  : "/images/placeholder.png";
+
+              // ✅ FIX: Discount calculation
+              const discount =
+                p.discount ?? // যদি discount field থাকে ব্যবহার করবে
+                (p.oldPrice && p.oldPrice > 0
+                  ? Math.round(((p.oldPrice - p.price) / p.oldPrice) * 100)
+                  : 0); // নয়তো 0
+
               return (
                 <Link
                   key={p._id}
-                  href={`/products/${p._id}`}
+                  href={`/products/${p.slug || p._id}`}
                   className="group rounded-2xl border border-[#14213D]/10 bg-[#F5F6F8] p-3 transition-shadow hover:shadow-lg"
                 >
                   <div className="relative mb-3 h-36 overflow-hidden rounded-xl md:h-44">
                     <Image
-                      src={p.img}
+                      src={imageUrl}
                       alt={p.name}
                       fill
                       className="object-cover transition-transform duration-500 group-hover:scale-105"
+                      onError={(e) => {
+                        // ✅ Image load fail → placeholder দেখাবে
+                        const img = e.target as HTMLImageElement;
+                        img.src = "/images/placeholder.png";
+                      }}
                     />
-                    <span className="absolute left-2 top-2 rounded-full bg-[#FF5A1F] px-2 py-0.5 text-[11px] font-medium text-white">
-                      -{discount}%
-                    </span>
+                    {discount > 0 && (
+                      <span className="absolute left-2 top-2 rounded-full bg-[#FF5A1F] px-2 py-0.5 text-[11px] font-medium text-white">
+                        -{discount}%
+                      </span>
+                    )}
                   </div>
+
                   <p className="line-clamp-2 text-sm font-medium leading-snug">
                     {p.name}
                   </p>
-                  <p className="mt-1 text-xs text-[#14213D]/45">{p.seller}</p>
 
-                  <div className="mt-2 flex items-center gap-1 text-xs text-[#14213D]/60">
-                    <StarIcon />
-                    {p.rating}{" "}
-                    <span className="text-[#14213D]/35">({p.reviews})</span>
-                  </div>
+                  <p className="mt-1 text-xs text-[#14213D]/45">
+                    {p.sellerName || p.brand || "অজানা"}
+                  </p>
+
+                  {/* ✅ Rating - optional check */}
+                  {p.rating != null && p.rating > 0 && (
+                    <div className="mt-2 flex items-center gap-1 text-xs text-[#14213D]/60">
+                      <StarIcon />
+                      {p.rating.toFixed(1)}{" "}
+                      <span className="text-[#14213D]/35">
+                        ({p.reviewCount || 0})
+                      </span>
+                    </div>
+                  )}
 
                   <div className="mt-2 flex items-center justify-between">
                     <div className="flex items-baseline gap-1.5">
                       <span className="font-[family-name:var(--font-mono)] text-sm font-semibold">
-                        ৳{p.price}
+                        ৳{p.price.toLocaleString("bn-BD")}
                       </span>
-                      <span className="font-[family-name:var(--font-mono)] text-xs text-[#14213D]/35 line-through">
-                        ৳{p.originalPrice}
-                      </span>
+                      {p.oldPrice && p.oldPrice > p.price && (
+                        <span className="font-[family-name:var(--font-mono)] text-xs text-[#14213D]/35 line-through">
+                          ৳{p.oldPrice.toLocaleString("bn-BD")}
+                        </span>
+                      )}
                     </div>
                     <button
                       aria-label="কার্টে যোগ করুন"
-                      onClick={(e) => e.preventDefault()} // কার্ড ক্লিকের সাথে conflict এড়ানোর জন্য
+                      onClick={(e) => e.preventDefault()}
                       className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#14213D] text-white transition-colors hover:bg-[#FF5A1F]"
                     >
                       <PlusIcon />
@@ -191,6 +216,7 @@ function StarIcon() {
     </svg>
   );
 }
+
 function PlusIcon() {
   return (
     <svg
