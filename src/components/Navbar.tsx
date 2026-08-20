@@ -1,23 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { useSession } from "../lib/auth-client";
+import { useCart } from "../context/CartContext";
 
 /**
- * Sticky navbar for Maati — v4 (optimized)
- * Same design tokens/behavior as v3, refactored to remove duplication:
- * - shared style strings instead of repeated Tailwind strings
- * - reusable <Dropdown> for both the category + profile menus
- * - nav links driven by a config array (desktop + mobile share it)
- * - single <AuthTrigger> covers logged-in/out, desktop + mobile
+ * Sticky navbar for Maati — v8
+ * UPDATED: cart count এখন shared CartContext থেকে আসছে, লোকাল dummy state না।
+ * ProductCard থেকে কার্টে কিছু যোগ করলে এখানকার badge সাথে সাথে আপডেট হবে।
  */
-
-type User = { name: string; email: string; avatarUrl?: string };
 
 const cx = (...c: (string | false | undefined)[]) =>
   c.filter(Boolean).join(" ");
 
-// ---- shared style tokens -----------------------------------------------
 const styles = {
   link: "relative py-1 text-[#202A44] transition-colors hover:text-[#B1502F] after:absolute after:-bottom-1 after:left-0 after:h-[2px] after:w-0 after:bg-[#B1502F] after:transition-all hover:after:w-full dark:text-[#F6F1E9] dark:hover:text-[#E2A227] dark:after:bg-[#E2A227]",
   panel:
@@ -35,25 +31,24 @@ const NAV_LINKS = [
   { label: "যোগাযোগ", href: "/contact" },
 ];
 
+// TODO: নতুন ক্যাটাগরি অ্যাড করতে চাইলে শুধু এই array-তে যোগ করো
 const CATEGORIES = [
-  { label: "মাটির পণ্য", href: "/products/pottery" },
-  { label: "ইলেক্ট্রনিক", href: "/products/Eloctorinc" },
-  { label: "উপহার সেট", href: "/products/gifts" },
-  { label: "অন্যান্য", href: "/products/others" },
+  { label: "ইলেকট্রনিক সামগ্রী", href: "/products/electronics" },
+  { label: "খাদ্যপণ্য", href: "/products/food" },
+  { label: "গৃহসামগ্রী", href: "/products/home-goods" },
+  { label: "প্রসাধনী সামগ্রী", href: "/products/cosmetics" },
 ];
 
 export default function Navbar() {
-  const [open, setOpen] = useState(false); // mobile menu
+  const { data: session, isPending } = useSession();
+  const user = session?.user;
+  const { cartCount } = useCart(); // NEW: shared cart state
+
+  const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [categoryOpen, setCategoryOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [cartCount] = useState(0);
   const [isDark, setIsDark] = useState(false);
-
-  // TODO: replace with real auth state (session/user from your auth provider)
-  const [user, setUser] = useState<User | null>(null);
-  const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -72,16 +67,6 @@ export default function Navbar() {
     document.documentElement.classList.toggle("dark", dark);
   }, []);
 
-  useEffect(() => {
-    if (!profileOpen) return;
-    const onClick = (e: MouseEvent) => {
-      if (profileRef.current && !profileRef.current.contains(e.target as Node))
-        setProfileOpen(false);
-    };
-    document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, [profileOpen]);
-
   const toggleTheme = () => {
     setIsDark((prev) => {
       const next = !prev;
@@ -89,13 +74,6 @@ export default function Navbar() {
       localStorage.setItem("maati-theme", next ? "dark" : "light");
       return next;
     });
-  };
-
-  const handleMockLogin = () =>
-    setUser({ name: "আবদুর রহমান", email: "rahaman@gmail.com" });
-  const handleLogout = () => {
-    setUser(null);
-    setProfileOpen(false);
   };
 
   return (
@@ -118,7 +96,6 @@ export default function Navbar() {
           <span className="hidden h-1.5 w-1.5 rounded-full bg-[#E2A227] sm:inline-block" />
         </Link>
 
-        {/* Center nav (desktop) */}
         <nav className="hidden items-center gap-8 text-sm font-medium md:flex">
           <div
             className="relative"
@@ -162,7 +139,6 @@ export default function Navbar() {
           ))}
         </nav>
 
-        {/* Right actions (desktop) */}
         <div className="hidden items-center gap-1 md:flex">
           <div className="flex items-center">
             <input
@@ -190,58 +166,35 @@ export default function Navbar() {
             {isDark ? <SunIcon /> : <MoonIcon />}
           </button>
 
-          <CartButton
-            count={cartCount}
-            className={cx("relative", styles.iconBtn)}
-          />
+          <Link href="/dashboard?tab=cart">
+            <CartButton
+              count={cartCount}
+              className={cx("relative", styles.iconBtn)}
+            />
+          </Link>
 
-          {user ? (
-            <div className="relative ml-2" ref={profileRef}>
-              <button
-                onClick={() => setProfileOpen((v) => !v)}
-                className="flex items-center gap-2 rounded-full border border-[#202A44]/15 py-1 pl-1 pr-3 transition-colors hover:bg-[#202A44]/5 dark:border-[#F6F1E9]/15 dark:hover:bg-white/10"
-                aria-expanded={profileOpen}
-              >
-                <Avatar name={user.name} url={user.avatarUrl} />
-                <span className="max-w-[8rem] truncate text-sm font-medium text-[#202A44] dark:text-[#F6F1E9]">
-                  {user.name}
-                </span>
-                <ChevronIcon open={profileOpen} />
-              </button>
-              <Dropdown open={profileOpen} align="right">
-                <div className="border-b border-[#202A44]/5 px-4 py-3 dark:border-[#F6F1E9]/5">
-                  <p className="truncate text-sm font-medium text-[#202A44] dark:text-[#F6F1E9]">
-                    {user.name}
-                  </p>
-                  <p className="truncate font-[family-name:var(--font-mono)] text-xs text-[#202A44]/50 dark:text-[#F6F1E9]/50">
-                    {user.email}
-                  </p>
-                </div>
-                <a href="/account" className={styles.panelItem}>
-                  প্রোফাইল
-                </a>
-                <a href="/orders" className={styles.panelItem}>
-                  আমার অর্ডার
-                </a>
-                <button
-                  onClick={handleLogout}
-                  className="block w-full border-t border-[#202A44]/5 px-4 py-2.5 text-left text-sm text-[#B1502F] transition-colors hover:bg-[#B1502F]/10 dark:border-[#F6F1E9]/5 dark:text-[#E2A227]"
-                >
-                  লগআউট
-                </button>
-              </Dropdown>
-            </div>
+          {isPending ? (
+            <div className="ml-2 h-9 w-24 animate-pulse rounded-full bg-[#202A44]/10 dark:bg-white/10" />
+          ) : user ? (
+            <Link
+              href="/dashboard"
+              className="ml-2 flex items-center gap-2 rounded-full border border-[#202A44]/15 py-1 pl-1 pr-3 transition-colors hover:bg-[#202A44]/5 dark:border-[#F6F1E9]/15 dark:hover:bg-white/10"
+            >
+              <Avatar name={user.name} />
+              <span className="max-w-[8rem] truncate text-sm font-medium text-[#202A44] dark:text-[#F6F1E9]">
+                {user.name}
+              </span>
+            </Link>
           ) : (
-            <button
-              onClick={handleMockLogin}
+            <Link
+              href="/login"
               className="ml-2 rounded-full border border-[#202A44] px-6 py-2 text-sm text-[#202A44] transition-colors hover:bg-[#202A44] hover:text-[#F6F1E9] dark:border-[#F6F1E9] dark:text-[#F6F1E9] dark:hover:bg-[#F6F1E9] dark:hover:text-[#202A44]"
             >
               লগইন
-            </button>
+            </Link>
           )}
         </div>
 
-        {/* Mobile toggles */}
         <div className="flex items-center gap-1 md:hidden">
           <button
             aria-label={isDark ? "লাইট মোড চালু করুন" : "ডার্ক মোড চালু করুন"}
@@ -261,7 +214,6 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Mobile menu */}
       <div
         className={cx(
           "overflow-hidden border-t border-[#202A44]/10 transition-[max-height] duration-300 dark:border-[#F6F1E9]/10 md:hidden",
@@ -270,8 +222,12 @@ export default function Navbar() {
       >
         <nav className="flex flex-col gap-1 px-5 py-5 text-sm font-medium">
           {user ? (
-            <div className="mb-3 flex items-center gap-3 rounded-xl border border-[#202A44]/10 p-3 dark:border-[#F6F1E9]/10">
-              <Avatar name={user.name} url={user.avatarUrl} />
+            <Link
+              href="/dashboard"
+              onClick={() => setOpen(false)}
+              className="mb-3 flex items-center gap-3 rounded-xl border border-[#202A44]/10 p-3 dark:border-[#F6F1E9]/10"
+            >
+              <Avatar name={user.name} />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-[#202A44] dark:text-[#F6F1E9]">
                   {user.name}
@@ -280,20 +236,15 @@ export default function Navbar() {
                   {user.email}
                 </p>
               </div>
-              <button
-                onClick={handleLogout}
-                className="shrink-0 rounded-full px-3 py-1.5 text-xs font-medium text-[#B1502F] dark:text-[#E2A227]"
-              >
-                লগআউট
-              </button>
-            </div>
+            </Link>
           ) : (
-            <button
-              onClick={handleMockLogin}
-              className="mb-3 rounded-full border border-[#202A44] px-6 py-2.5 text-sm text-[#202A44] dark:border-[#F6F1E9] dark:text-[#F6F1E9]"
+            <Link
+              href="/login"
+              onClick={() => setOpen(false)}
+              className="mb-3 rounded-full border border-[#202A44] px-6 py-2.5 text-center text-sm text-[#202A44] dark:border-[#F6F1E9] dark:text-[#F6F1E9]"
             >
               লগইন
-            </button>
+            </Link>
           )}
 
           <input
@@ -332,19 +283,29 @@ export default function Navbar() {
           ))}
 
           <div className="mt-3 flex items-center justify-between">
-            <CartButton
-              count={cartCount}
-              onClick={() => setOpen(false)}
-              className="relative rounded-full p-2 hover:bg-[#202A44]/5 dark:hover:bg-white/10"
-            />
+            <Link href="/dashboard?tab=cart" onClick={() => setOpen(false)}>
+              <CartButton
+                count={cartCount}
+                className="relative rounded-full p-2 hover:bg-[#202A44]/5 dark:hover:bg-white/10"
+              />
+            </Link>
+            {user && (
+              <button
+                onClick={() => {
+                  signOut();
+                  setOpen(false);
+                }}
+                className="rounded-full border border-[#202A44]/20 px-4 py-1.5 text-xs text-[#202A44] dark:border-[#F6F1E9]/20 dark:text-[#F6F1E9]"
+              >
+                লগআউট
+              </button>
+            )}
           </div>
         </nav>
       </div>
     </header>
   );
 }
-
-// ---- small shared components -------------------------------------------
 
 function Dropdown({
   open,
@@ -376,13 +337,7 @@ function Dropdown({
   );
 }
 
-function Avatar({ name, url }: { name: string; url?: string }) {
-  if (url) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return (
-      <img src={url} alt={name} className="h-7 w-7 rounded-full object-cover" />
-    );
-  }
+function Avatar({ name }: { name: string }) {
   return (
     <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#B1502F] font-[family-name:var(--font-display)] text-sm text-white">
       {name.trim().charAt(0).toUpperCase()}
@@ -393,25 +348,21 @@ function Avatar({ name, url }: { name: string; url?: string }) {
 function CartButton({
   count,
   className,
-  onClick,
 }: {
   count: number;
   className?: string;
-  onClick?: () => void;
 }) {
   return (
-    <button aria-label="কার্ট" className={className} onClick={onClick}>
+    <span aria-label="কার্ট" className={className}>
       <CartIcon />
       {count > 0 && (
         <span className="absolute right-1.5 top-1.5 grid h-4 w-4 place-items-center rounded-full bg-[#B1502F] font-[family-name:var(--font-mono)] text-[10px] text-white">
           {count}
         </span>
       )}
-    </button>
+    </span>
   );
 }
-
-// ---- icons ---------------------------------------------------------------
 
 const CartIcon = () => (
   <svg

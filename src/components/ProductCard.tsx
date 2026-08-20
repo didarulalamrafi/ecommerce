@@ -2,6 +2,9 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCart } from "../context/CartContext";
+import { useSession } from "../lib/auth-client";
 
 /**
  * Product shape — matches the dummy documents seeded in MongoDB.
@@ -13,6 +16,7 @@ export interface Product {
   slug: string;
   category: string;
   brand: string;
+  sellerName?: string; // NEW: যে seller প্রোডাক্টটি অ্যাড করেছে তার নাম
   price: number;
   oldPrice?: number;
   discount?: number;
@@ -28,9 +32,38 @@ export interface Product {
 }
 
 export default function ProductCard({ product }: { product: Product }) {
+  const router = useRouter();
+  const { data: session } = useSession();
+  const { addToCart } = useCart();
+
   const [inCart, setInCart] = useState(product.inCart ?? false);
+  const [adding, setAdding] = useState(false);
   const lowStock = product.stock > 0 && product.stock <= 10;
   const outOfStock = product.stock === 0;
+
+  async function handleCartClick() {
+    // লগইন করা না থাকলে লগইন পেজে পাঠিয়ে দেওয়া হবে
+    if (!session) {
+      router.push("/login");
+      return;
+    }
+    if (outOfStock || adding) return;
+
+    // ইতিমধ্যে কার্টে থাকলে টগল করা হচ্ছে না — শুধু যোগ করা যাবে,
+    // সরানোর জন্য কার্ট পেজে যেতে হবে
+    if (inCart) return;
+
+    setAdding(true);
+    const ok = await addToCart({
+      productId: product._id ?? product.slug,
+      name: product.name,
+      price: product.price,
+      image: product.image,
+      qty: 1,
+    });
+    setAdding(false);
+    if (ok) setInCart(true);
+  }
 
   return (
     <div className="group flex flex-col overflow-hidden rounded-2xl border border-[#202A44]/10 bg-[#FFFDF8] transition-shadow hover:shadow-lg">
@@ -72,8 +105,9 @@ export default function ProductCard({ product }: { product: Product }) {
 
       {/* content */}
       <div className="flex flex-1 flex-col gap-2 p-3.5">
+        {/* NEW: এখন brand-এর বদলে যে seller প্রোডাক্টটি বিক্রি করছে তার নাম দেখানো হচ্ছে */}
         <p className="font-[family-name:var(--font-mono)] text-[11px] uppercase tracking-wide text-[#5B6B4C]">
-          {product.brand}
+          {product.sellerName || product.brand}
         </p>
 
         <a
@@ -110,9 +144,9 @@ export default function ProductCard({ product }: { product: Product }) {
           </div>
 
           <button
-            disabled={outOfStock}
-            onClick={() => setInCart((v) => !v)}
-            aria-label={inCart ? "কার্ট থেকে সরান" : "কার্টে যোগ করুন"}
+            disabled={outOfStock || adding}
+            onClick={handleCartClick}
+            aria-label={inCart ? "কার্টে আছে" : "কার্টে যোগ করুন"}
             className={`grid h-9 w-9 shrink-0 place-items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
               inCart
                 ? "bg-[#5B6B4C] text-white"
