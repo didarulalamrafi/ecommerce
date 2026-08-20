@@ -1,321 +1,216 @@
 "use client";
 
-import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
-import { Fraunces, Inter, IBM_Plex_Mono } from "next/font/google";
+import { useRouter } from "next/navigation";
+import { Space_Grotesk, Inter, IBM_Plex_Mono } from "next/font/google";
+import { useCart } from "../context/CartContext";
+import FlashSaleHero from "@/components/FlashSaleHero";
+import TodaysBestDeals from "@/components/Todaysbestdeals";
 
 /**
  * Fonts
- * - Fraunces: warm, slightly irregular serif -> echoes hand-thrown pottery
+ * - Space Grotesk: technical, energetic display face -> fits a multi-vendor marketplace
  * - Inter: body copy
- * - IBM Plex Mono: prices / SKU-style labels
+ * - IBM Plex Mono: prices, stall numbers, countdown digits
  */
-const fraunces = Fraunces({
+const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  style: ["normal", "italic"],
+  weight: ["500", "600", "700"],
   variable: "--font-display",
 });
 const inter = Inter({ subsets: ["latin"], variable: "--font-body" });
 const plexMono = IBM_Plex_Mono({
   subsets: ["latin"],
-  weight: ["400", "500"],
+  weight: ["400", "500", "600"],
   variable: "--font-mono",
 });
 
-const CATEGORIES = [
-  {
-    name: "মাটির পাত্র",
-    en: "Terracotta Pots",
-    img: "https://images.unsplash.com/photo-1610701596007-11502861dcfa?q=80&w=800&auto=format&fit=crop",
-  },
-  {
-    name: "সিরামিক টেবিলওয়্যার",
-    en: "Ceramic Tableware",
-    img: "https://images.unsplash.com/photo-1610701596061-2ecf227e85b2?q=80&w=800&auto=format&fit=crop",
-  },
-  {
-    name: "ফুলদানি ও ডেকর",
-    en: "Vases & Decor",
-    img: "https://images.unsplash.com/photo-1578500494198-246f612d3b3d?q=80&w=800&auto=format&fit=crop",
-  },
-  {
-    name: "চা ও কফি সেট",
-    en: "Tea & Coffee Sets",
-    img: "https://images.unsplash.com/photo-1517142089942-ba376ce32a2e?q=80&w=800&auto=format&fit=crop",
-  },
-];
+interface Category {
+  name: string;
+  icon: string;
+}
 
-const PRODUCTS = [
-  {
-    name: "রাজশাহী টেরাকোটা ফুলদানি",
-    artisan: "শিল্পী: মোঃ করিম, রাজশাহী",
-    price: "১,২৫০",
-    img: "https://images.unsplash.com/photo-1578500494198-246f612d3b3d?q=80&w=800&auto=format&fit=crop",
-    tag: "নতুন",
-  },
-  {
-    name: "হাতে আঁকা সিরামিক বাটি সেট",
-    artisan: "শিল্পী: রিনা বেগম, পাবনা",
-    price: "১,৮৯০",
-    img: "https://images.unsplash.com/photo-1610701596007-11502861dcfa?q=80&w=800&auto=format&fit=crop",
-    tag: "বেস্টসেলার",
-  },
-  {
-    name: "নীল-সাদা চায়ের কাপ (৪ পিস)",
-    artisan: "শিল্পী: আব্দুল জব্বার, কুমিল্লা",
-    price: "৯৫০",
-    img: "https://images.unsplash.com/photo-1517142089942-ba376ce32a2e?q=80&w=800&auto=format&fit=crop",
-    tag: null,
-  },
-  {
-    name: "মাটির প্ল্যান্টার — মাঝারি",
-    artisan: "শিল্পী: সালমা খাতুন, পাবনা",
-    price: "৭৫০",
-    img: "https://images.unsplash.com/photo-1610701596061-2ecf227e85b2?q=80&w=800&auto=format&fit=crop",
-    tag: null,
-  },
-];
-
-const PROCESS_STEPS = [
-  {
-    step: "০১",
-    title: "মাটি সংগ্রহ",
-    desc: "পদ্মা তীরের এঁটেল মাটি বাছাই করে আনা হয়।",
-  },
-  {
-    step: "০২",
-    title: "চাকায় গড়া",
-    desc: "কারিগরের হাতে চাকায় ফর্ম দেওয়া হয়।",
-  },
-  {
-    step: "০৩",
-    title: "রোদে শুকানো",
-    desc: "প্রাকৃতিক রোদে কয়েক দিন শুকানো হয়।",
-  },
-  {
-    step: "০৪",
-    title: "চুল্লিতে পোড়ানো",
-    desc: "ঐতিহ্যবাহী চুল্লিতে পুড়িয়ে মজবুত করা হয়।",
-  },
+const CATEGORIES: Category[] = [
+  { name: "ইলেকট্রনিক্স", icon: "📱" },
+  { name: "ফ্যাশন", icon: "👗" },
+  { name: "হোম ও লিভিং", icon: "🛋️" },
+  { name: "বিউটি", icon: "💄" },
+  { name: "মুদি", icon: "🛒" },
+  { name: "খেলনা", icon: "🧸" },
+  { name: "স্পোর্টস", icon: "⚽" },
+  { name: "বই", icon: "📚" },
 ];
 
 export default function Home() {
-  const [email, setEmail] = useState("");
-  const [subscribed, setSubscribed] = useState(false);
+  const router = useRouter();
+  const { cartCount } = useCart();
+  const [search, setSearch] = useState("");
+  // মোবাইলে হ্যামবার্গার মেনু খোলা/বন্ধ আছে কিনা — এখানে "বিক্রেতা হন" আর "লগইন" লিংক থাকবে
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    router.push(
+      search ? `/products?q=${encodeURIComponent(search)}` : "/products",
+    );
+  }
 
   return (
     <div
-      className={`${fraunces.variable} ${inter.variable} ${plexMono.variable} min-h-screen bg-[#F6F1E9] font-[family-name:var(--font-body)] text-[#202A44]`}
+      className={`${spaceGrotesk.variable} ${inter.variable} ${plexMono.variable} min-h-screen bg-[#F5F6F8] font-[family-name:var(--font-body)] text-[#14213D]`}
     >
-      {/* ---------- HERO ---------- */}
-      <section className="mx-auto max-w-7xl px-5 pb-16 pt-20 md:px-8 md:pb-24 md:pt-28">
-        <div className="grid items-center gap-12 md:grid-cols-2">
-          <div>
-            <span className="mb-6 inline-block rounded-full border border-[#5B6B4C]/30 bg-[#5B6B4C]/10 px-3 py-1 text-sm text-[#5B6B4C]">
-              হাতে তৈরি · সীমিত সংখ্যক
-            </span>
-            <h1 className="font-[family-name:var(--font-display)] text-5xl leading-[1.05] tracking-tight md:text-6xl">
-              মাটির গল্প,{" "}
-              <span className="italic text-[#B1502F]">প্রতিটি ঘরে।</span>
-            </h1>
-            <p className="mt-6 max-w-md text-base leading-relaxed text-[#202A44]/70">
-              বাংলাদেশের কারিগরদের হাতে গড়া টেরাকোটা ও সিরামিক পণ্য — প্রতিটি
-              পিস আলাদা, প্রতিটির পেছনে আছে একজন শিল্পীর গল্প।
-            </p>
-            <div className="mt-8 flex flex-wrap gap-4">
-              <button className="rounded-full bg-[#B1502F] px-8 py-3 text-base text-white transition-colors hover:bg-[#9c4327]">
-                কেনাকাটা শুরু করুন
-              </button>
-              <button className="rounded-full border border-[#202A44] px-8 py-3 text-base text-[#202A44] transition-colors hover:bg-[#202A44] hover:text-[#F6F1E9]">
-                আমাদের গল্প পড়ুন
-              </button>
-            </div>
-
-            <div className="mt-10 flex gap-8 text-sm">
-              <div>
-                <p className="font-[family-name:var(--font-mono)] text-2xl">
-                  ৪০+
-                </p>
-                <p className="text-[#202A44]/60">অংশীদার কারিগর</p>
-              </div>
-              <div>
-                <p className="font-[family-name:var(--font-mono)] text-2xl">
-                  ৫০০+
-                </p>
-                <p className="text-[#202A44]/60">হাতে তৈরি ডিজাইন</p>
-              </div>
-            </div>
-          </div>
-
-          {/* offset image collage + signature seal */}
-          <div className="relative mx-auto grid max-w-md grid-cols-2 gap-4">
-            <div className="relative mt-10 h-56 overflow-hidden rounded-[2rem] shadow-xl">
-              <Image
-                src="https://images.unsplash.com/photo-1578500494198-246f612d3b3d?q=80&w=800&auto=format&fit=crop"
-                alt="হাতে তৈরি ফুলদানি"
-                fill
-                className="object-cover"
-              />
-            </div>
-            <div className="relative h-72 overflow-hidden rounded-[2rem] shadow-xl">
-              <Image
-                src="https://images.unsplash.com/photo-1610701596007-11502861dcfa?q=80&w=800&auto=format&fit=crop"
-                alt="মাটির পাত্র"
-                fill
-                className="object-cover"
-              />
-            </div>
-
-            {/* signature handmade seal */}
-            <div className="absolute -left-6 top-1/2 grid h-24 w-24 -translate-y-1/2 rotate-[-12deg] place-items-center rounded-full border-2 border-dashed border-[#E2A227] bg-[#F6F1E9] text-center shadow-lg">
-              <span className="font-[family-name:var(--font-display)] text-xs italic leading-tight text-[#B1502F]">
-                হাতে
-                <br />
-                তৈরি
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ---------- TRUST STRIP ---------- */}
-      <section className="border-y border-[#202A44]/10 bg-[#FFFDF8]">
-        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-6 px-5 py-8 text-center text-sm md:grid-cols-4 md:px-8">
-          <TrustItem icon={<TruckIcon />} label="সারাদেশে ডেলিভারি" />
-          <TrustItem icon={<ShieldIcon />} label="নিরাপদ পেমেন্ট" />
-          <TrustItem icon={<PackageIcon />} label="সেফ প্যাকেজিং" />
-          <TrustItem icon={<HeartIcon />} label="কারিগরকে সরাসরি সাপোর্ট" />
-        </div>
-      </section>
-
-      {/* ---------- CATEGORIES ---------- */}
-      <section id="categories" className="mx-auto max-w-7xl px-5 py-20 md:px-8">
-        <div className="mb-10 flex items-end justify-between">
-          <h2 className="font-[family-name:var(--font-display)] text-3xl md:text-4xl">
-            ক্যাটাগরি অনুযায়ী দেখুন
-          </h2>
-          <a
-            href="#products"
-            className="hidden text-sm text-[#B1502F] hover:underline md:block"
+      {/* ---------- HEADER ---------- */}
+      <header className="sticky top-0 z-30 border-b border-[#14213D]/10 bg-[#F5F6F8]/95 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 sm:gap-4 sm:px-5 md:px-8">
+          {/* লোগো — মোবাইলে একটু ছোট, বড় স্ক্রিনে আগের সাইজ */}
+          <Link
+            href="/"
+            className="shrink-0 font-[family-name:var(--font-display)] text-xl font-bold tracking-tight sm:text-2xl"
           >
-            সব দেখুন →
-          </a>
-        </div>
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          {CATEGORIES.map((c) => (
-            <a
-              key={c.en}
-              href="#products"
-              className="group relative overflow-hidden rounded-2xl"
+            মেলা
+          </Link>
+
+          {/* ডেস্কটপ সার্চ বার — মোবাইলে হাইড, নিচে আলাদা মোবাইল সার্চ ফর্ম আছে */}
+          <form
+            onSubmit={handleSearch}
+            className="relative hidden flex-1 md:block"
+          >
+            <SearchIcon />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="প্রোডাক্ট, ব্র্যান্ড বা বিক্রেতা খুঁজুন"
+              className="w-full rounded-full border border-[#14213D]/15 bg-white py-2.5 pl-11 pr-4 text-sm outline-none placeholder:text-[#14213D]/40 focus:border-[#FF5A1F]"
+            />
+          </form>
+
+          <div className="ml-auto flex shrink-0 items-center gap-3 text-sm sm:gap-5">
+            {/* এই দুইটা লিংক আগে শুধু md:block ছিল, তাই মোবাইলে এক্সেসই করা যেত না।
+                এখন হ্যামবার্গার মেনুর ভেতরে মোবাইলে দেখাবে (নিচে দেখো)। */}
+            <Link
+              href="/seller"
+              className="hidden text-[#14213D]/70 hover:text-[#FF5A1F] md:block"
             >
-              <div className="relative h-56 w-full">
-                <Image
-                  src={c.img}
-                  alt={c.name}
-                  fill
-                  className="object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#202A44]/70 via-transparent to-transparent" />
-              </div>
-              <div className="absolute bottom-4 left-4 right-4 text-white">
-                <p className="font-[family-name:var(--font-display)] text-lg">
-                  {c.name}
-                </p>
-                <p className="font-[family-name:var(--font-mono)] text-xs opacity-80">
-                  {c.en}
-                </p>
-              </div>
-            </a>
+              বিক্রেতা হন
+            </Link>
+            <Link
+              href="/login"
+              className="hidden text-[#14213D]/70 hover:text-[#FF5A1F] md:block"
+            >
+              লগইন
+            </Link>
+            <Link href="/cart" className="relative">
+              <CartIcon />
+              {cartCount > 0 && (
+                <span className="absolute -right-2 -top-2 grid h-4 w-4 place-items-center rounded-full bg-[#FF5A1F] font-[family-name:var(--font-mono)] text-[10px] text-white">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
+
+            {/* হ্যামবার্গার মেনু বাটন — শুধু মোবাইলে দেখাবে (md:hidden) */}
+            <button
+              type="button"
+              aria-label="মেনু খুলুন"
+              onClick={() => setMenuOpen((prev) => !prev)}
+              className="grid h-8 w-8 place-items-center text-[#14213D] md:hidden"
+            >
+              {menuOpen ? <CloseIcon /> : <MenuIcon />}
+            </button>
+          </div>
+        </div>
+
+        {/* মোবাইল ড্রপডাউন মেনু — বিক্রেতা হন / লগইন, শুধু menuOpen true হলে দেখাবে */}
+        {menuOpen && (
+          <div className="flex flex-col gap-1 border-t border-[#14213D]/10 bg-white px-4 py-2 md:hidden">
+            <Link
+              href="/seller"
+              onClick={() => setMenuOpen(false)}
+              className="rounded-lg px-2 py-2.5 text-sm text-[#14213D]/80 hover:bg-[#F5F6F8]"
+            >
+              বিক্রেতা হন
+            </Link>
+            <Link
+              href="/login"
+              onClick={() => setMenuOpen(false)}
+              className="rounded-lg px-2 py-2.5 text-sm text-[#14213D]/80 hover:bg-[#F5F6F8]"
+            >
+              লগইন
+            </Link>
+          </div>
+        )}
+
+        {/* মোবাইল সার্চ ফর্ম — শুধু মোবাইলে দেখাবে */}
+        <form
+          onSubmit={handleSearch}
+          className="relative px-4 pb-3 sm:px-5 md:hidden"
+        >
+          <SearchIcon />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="প্রোডাক্ট খুঁজুন"
+            className="w-full rounded-full border border-[#14213D]/15 bg-white py-2.5 pl-11 pr-4 text-sm outline-none placeholder:text-[#14213D]/40 focus:border-[#FF5A1F]"
+          />
+        </form>
+
+        {/* ক্যাটেগরি রেইল — হরাইজন্টাল স্ক্রল, মোবাইলে পিল সাইজ একটু ছোট */}
+        <div className="scrollbar-none flex gap-2 overflow-x-auto border-t border-[#14213D]/5 px-4 py-3 sm:gap-3 sm:px-5 md:px-8">
+          {CATEGORIES.map((c) => (
+            <Link
+              key={c.name}
+              href="/products"
+              className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-[#14213D]/10 bg-white px-3 py-1.5 text-xs text-[#14213D]/70 transition-colors hover:border-[#FF5A1F] hover:text-[#FF5A1F] sm:gap-2 sm:px-3.5 sm:text-sm"
+            >
+              <span>{c.icon}</span>
+              {c.name}
+            </Link>
           ))}
         </div>
-      </section>
+      </header>
 
-      {/* ---------- FEATURED PRODUCTS ---------- */}
-      <section id="products" className="bg-[#FFFDF8] py-20">
-        <div className="mx-auto max-w-7xl px-5 md:px-8">
-          <div className="mb-10 flex items-end justify-between">
-            <h2 className="font-[family-name:var(--font-display)] text-3xl md:text-4xl">
-              এই সপ্তাহের বাছাই
-            </h2>
-            <a
-              href="#"
-              className="hidden text-sm text-[#B1502F] hover:underline md:block"
-            >
-              সব প্রোডাক্ট →
-            </a>
-          </div>
+      {/* ---------- FLASH SALE HERO ---------- */}
+      <FlashSaleHero />
 
-          <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
-            {PRODUCTS.map((p) => (
-              <div
-                key={p.name}
-                className="group rounded-2xl border border-[#202A44]/10 bg-[#F6F1E9] p-3 transition-shadow hover:shadow-lg"
-              >
-                <div className="relative mb-3 h-40 overflow-hidden rounded-xl md:h-48">
-                  <Image
-                    src={p.img}
-                    alt={p.name}
-                    fill
-                    className="object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                  {p.tag && (
-                    <span className="absolute left-2 top-2 rounded-full bg-[#E2A227] px-2 py-0.5 text-[11px] font-medium text-[#202A44]">
-                      {p.tag}
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm font-medium leading-snug">{p.name}</p>
-                <p className="mt-1 text-xs text-[#202A44]/50">{p.artisan}</p>
-                <div className="mt-3 flex items-center justify-between">
-                  <span className="font-[family-name:var(--font-mono)] text-sm">
-                    ৳{p.price}
-                  </span>
-                  <button
-                    aria-label="কার্টে যোগ করুন"
-                    className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#202A44] text-[#F6F1E9] transition-colors hover:bg-[#B1502F]"
-                  >
-                    <PlusIcon />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+      {/* ---------- TRUST STRIP ---------- */}
+      <section className="border-y border-[#14213D]/10 bg-white">
+        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-6 px-5 py-6 text-center text-sm md:grid-cols-4 md:px-8">
+          <TrustItem icon={<TruckIcon />} label="সারাদেশে ডেলিভারি" />
+          <TrustItem icon={<ShieldIcon />} label="যাচাইকৃত বিক্রেতা" />
+          <TrustItem icon={<PackageIcon />} label="সহজ রিটার্ন" />
+          <TrustItem icon={<CashIcon />} label="ক্যাশ অন ডেলিভারি" />
         </div>
       </section>
 
-      {/* ---------- PROCESS (real sequence -> numbering justified) ---------- */}
-      <section id="story" className="mx-auto max-w-7xl px-5 py-20 md:px-8">
-        <div className="grid gap-12 md:grid-cols-2 md:items-center">
-          <div className="relative h-80 overflow-hidden rounded-[2rem] md:h-[28rem]">
-            <Image
-              src="https://images.unsplash.com/photo-1610701596061-2ecf227e85b2?q=80&w=1000&auto=format&fit=crop"
-              alt="কারিগর কাজ করছেন"
-              fill
-              className="object-cover"
-            />
-          </div>
+      {/* ---------- TOP SELLERS (stalls) ---------- */}
+      {/* কমেন্ট করা আছে — চাইলে পরে আবার চালু করতে পারো */}
+
+      {/* ---------- PRODUCT GRID (এখন dynamic — ব্যাকএন্ড থেকে ফেচ হয়) ---------- */}
+      <TodaysBestDeals />
+
+      {/* ---------- SELL ON মেলা CTA ---------- */}
+      <section className="mx-auto max-w-7xl px-5 py-16 md:px-8">
+        <div className="flex flex-col items-start justify-between gap-6 rounded-3xl bg-[#14213D] p-10 text-white md:flex-row md:items-center md:p-14">
           <div>
-            <p className="mb-2 font-[family-name:var(--font-mono)] text-xs uppercase tracking-widest text-[#5B6B4C]">
-              আমাদের প্রক্রিয়া
+            <p className="mb-2 font-[family-name:var(--font-mono)] text-xs uppercase tracking-widest text-[#FFC93C]">
+              বিক্রেতাদের জন্য
             </p>
-            <h2 className="mb-8 font-[family-name:var(--font-display)] text-3xl md:text-4xl">
-              মাটি থেকে যেভাবে ঘরে আসে
+            <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold md:text-3xl">
+              আপনার নিজের স্টল খুলুন মেলায়
             </h2>
-            <div className="space-y-6">
-              {PROCESS_STEPS.map((s) => (
-                <div key={s.step} className="flex gap-4">
-                  <span className="font-[family-name:var(--font-mono)] text-sm text-[#B1502F]">
-                    {s.step}
-                  </span>
-                  <div>
-                    <p className="font-medium">{s.title}</p>
-                    <p className="text-sm text-[#202A44]/60">{s.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <p className="mt-2 max-w-md text-sm text-white/60">
+              হাজারো ক্রেতার কাছে সরাসরি পৌঁছান — নিবন্ধন করুন কয়েক মিনিটে।
+            </p>
           </div>
+          <button
+            onClick={() => router.push("/seller")}
+            className="shrink-0 rounded-full bg-[#FF5A1F] px-8 py-3 text-sm font-medium text-white transition-colors hover:bg-[#e64f18]"
+          >
+            বিক্রেতা হিসেবে শুরু করুন
+          </button>
         </div>
       </section>
     </div>
@@ -327,25 +222,73 @@ export default function Home() {
 function TrustItem({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
     <div className="flex flex-col items-center gap-2">
-      <span className="text-[#B1502F]">{icon}</span>
-      <span className="text-[#202A44]/70">{label}</span>
+      <span className="text-[#FF5A1F]">{icon}</span>
+      <span className="text-[#14213D]/70">{label}</span>
     </div>
   );
 }
 
 /* ---------- inline icons (no extra deps) ---------- */
 
-function PlusIcon() {
+function SearchIcon() {
   return (
     <svg
-      width="14"
-      height="14"
+      width="16"
+      height="16"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2.5"
+      strokeWidth="2"
+      className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#14213D]/40"
     >
-      <path d="M12 5v14M5 12h14" />
+      <circle cx="11" cy="11" r="7" />
+      <path d="m21 21-4.3-4.3" />
+    </svg>
+  );
+}
+function MenuIcon() {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      <path d="M3 6h18M3 12h18M3 18h18" />
+    </svg>
+  );
+}
+function CloseIcon() {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  );
+}
+function CartIcon() {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <circle cx="9" cy="21" r="1" />
+      <circle cx="20" cy="21" r="1" />
+      <path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6" />
     </svg>
   );
 }
@@ -395,7 +338,7 @@ function PackageIcon() {
     </svg>
   );
 }
-function HeartIcon() {
+function CashIcon() {
   return (
     <svg
       width="20"
@@ -405,7 +348,9 @@ function HeartIcon() {
       stroke="currentColor"
       strokeWidth="2"
     >
-      <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z" />
+      <rect x="2" y="6" width="20" height="12" rx="2" />
+      <circle cx="12" cy="12" r="3" />
+      <path d="M6 12h.01M18 12h.01" />
     </svg>
   );
 }
