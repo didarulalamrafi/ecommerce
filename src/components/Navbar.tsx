@@ -35,7 +35,7 @@ const NAV_LINKS = [
 const CATEGORIES = [
   { label: "ইলেকট্রনিক সামগ্রী", href: "/products/electronics" },
   { label: "খাদ্যপণ্য", href: "/products/food" },
-  { label: "গৃহসামগ্রী", href: "/products/home-goods" },
+  { label: "গৃহসামগ্রী", href: "products" },
   { label: "প্রসাধনী সামগ্রী", href: "/products/cosmetics" },
 ];
 

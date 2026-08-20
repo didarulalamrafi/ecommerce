@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import ProductCard, { type Product } from "../../components/ProductCard";
 
-// UPDATED: Backend URL .env.local থেকে আসছে, hardcode নয়।
+// Backend URL .env.local থেকে আসছে, hardcode নয়।
 // .env.local-এ যোগ করুন:
 //   NEXT_PUBLIC_API_URL=http://localhost:5000
 // (নোট: Express backend PORT=3000 রাখলে Next.js dev server-এর সাথে
@@ -25,8 +25,15 @@ export default function ProductsPage() {
         setLoading(true);
         const res = await fetch(`${API_URL}/api/products`);
         if (!res.ok) throw new Error("প্রোডাক্ট লোড করা যায়নি");
-        const data: Product[] = await res.json();
-        setProducts(data);
+        const data = await res.json();
+
+        // FIX: backend response array () নাকি { products: [...] } object,
+        // দুই ক্ষেত্রেই handle করা হচ্ছে যাতে products.map() ভাঙ্গে না
+        const productList: Product[] = Array.isArray(data)
+          ? data
+          : data.products || [];
+
+        setProducts(productList);
       } catch (err) {
         setError(
           "প্রোডাক্ট লোড করতে সমস্যা হয়েছে। ব্যাকএন্ড সার্ভার চালু আছে কিনা দেখুন।",
@@ -38,7 +45,7 @@ export default function ProductsPage() {
     loadProducts();
   }, []);
 
-  // NEW: প্রোডাক্ট থেকেই ইউনিক ক্যাটাগরি বের করা হচ্ছে, আলাদা API কল লাগছে না
+  // প্রোডাক্ট থেকেই ইউনিক ক্যাটাগরি বের করা হচ্ছে, আলাদা API কল লাগছে না
   const categories = useMemo(() => {
     const unique = Array.from(new Set(products.map((p) => p.category)));
     return ["সব", ...unique];

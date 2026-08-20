@@ -9,6 +9,8 @@ import {
 } from "react";
 import { useSession } from "../lib/auth-client";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
 interface AddToCartInput {
   productId: string;
   name: string;
@@ -38,7 +40,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setCartCount(0);
       return;
     }
-    fetch("/api/cart", { credentials: "include" })
+    fetch(`${API_URL}/api/cart`, { credentials: "include" })
       .then((r) => r.json())
       .then((items: { qty: number }[]) => {
         const total = Array.isArray(items)
@@ -49,7 +51,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       .catch(() => setCartCount(0));
   }
 
-  // লগইন স্টেট বদলালে (লগইন/লগআউট) কার্ট রিফ্রেশ হবে
   useEffect(() => {
     refreshCart();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -57,7 +58,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   async function addToCart(item: AddToCartInput) {
     try {
-      const res = await fetch("/api/cart", {
+      const res = await fetch(`${API_URL}/api/cart`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -65,7 +66,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       });
       if (!res.ok) return false;
 
-      // Navbar badge সাথে সাথে আপডেট হওয়ার জন্য optimistic update
       setCartCount((c) => c + (item.qty ?? 1));
       return true;
     } catch {
