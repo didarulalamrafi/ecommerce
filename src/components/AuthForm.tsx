@@ -29,7 +29,8 @@ export default function AuthForm({ mode }: AuthFormProps) {
     setLoading(true);
 
     try {
-      const { error: authError } = isRegister
+      // ✅ Sign up অথবা sign in করি
+      const result = isRegister
         ? await authClient.signUp.email({
             name: form.name,
             email: form.email,
@@ -40,14 +41,35 @@ export default function AuthForm({ mode }: AuthFormProps) {
             password: form.password,
           });
 
-      if (authError) {
-        throw new Error(authError.message || "কিছু একটা সমস্যা হয়েছে");
+      // ✅ Error check করি
+      if (result.error) {
+        throw new Error(result.error.message || "কিছু একটা সমস্যা হয়েছে");
       }
 
-      // ✅ fresh session থেকে role নিয়ে সঠিক পেজে পাঠানো
-      const { data: session } = await authClient.getSession();
-      const redirectPath = getRedirectPath(session?.user?.role);
+      // ✅ FIX: getSession() না করে, সরাসরি HTTP endpoint থেকে fetch করি
+      // Better Auth getSession() method arguments দাবি করে, তাই এটি skip করছি
+      let userRole = "user"; // Default role
 
+      try {
+        // ✅ Session API endpoint থেকে role পাই
+        const sessionResponse = await fetch("/api/auth/session", {
+          method: "GET",
+          credentials: "include", // ✅ Cookies include করি
+        });
+
+        if (sessionResponse.ok) {
+          const sessionData = await sessionResponse.json();
+          // ✅ Response থেকে role extract করি (type safe casting সহ)
+          userRole = (sessionData?.user as any)?.role || "user";
+        }
+      } catch (fetchErr) {
+        // ✅ Fallback: default "user" role ব্যবহার করি
+        console.warn("Session fetch failed, using default role:", fetchErr);
+        userRole = "user";
+      }
+
+      // ✅ Role নিয়ে সঠিক page-এ redirect করি
+      const redirectPath = getRedirectPath(userRole);
       router.push(redirectPath);
       router.refresh();
     } catch (err) {
@@ -58,8 +80,8 @@ export default function AuthForm({ mode }: AuthFormProps) {
   }
 
   async function handleOAuth(provider: "google" | "facebook") {
-    // OAuth flow সরাসরি redirect করে বলে callback-এই role জানা যায় না
-    // তাই callback একটা নিরপেক্ষ পেজে পাঠাবে, ওই পেজ role দেখে আবার route করবে
+    // OAuth flow সরাসরি redirect করে বলে এখানে role পাওয়া যায় না
+    // তাই callback একটা neutral page-এ যাবে, সেখান থেকে role দেখে আবার redirect হবে
     await authClient.signIn.social({
       provider,
       callbackURL: "/auth/redirect",
