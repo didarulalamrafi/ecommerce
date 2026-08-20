@@ -63,14 +63,6 @@ export default function Home() {
       {/* ---------- HEADER ---------- */}
       <header className="sticky top-0 z-30 border-b border-[#14213D]/10 bg-[#F5F6F8]/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 sm:gap-4 sm:px-5 md:px-8">
-          {/* লোগো — মোবাইলে একটু ছোট, বড় স্ক্রিনে আগের সাইজ */}
-          <Link
-            href="/"
-            className="shrink-0 font-[family-name:var(--font-display)] text-xl font-bold tracking-tight sm:text-2xl"
-          >
-            মেলা
-          </Link>
-
           {/* ডেস্কটপ সার্চ বার — মোবাইলে হাইড, নিচে আলাদা মোবাইল সার্চ ফর্ম আছে */}
           <form
             onSubmit={handleSearch}
