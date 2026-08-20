@@ -6,10 +6,10 @@ const client = new MongoClient(process.env.MONGODB_URI as string);
 const db = client.db();
 
 export const auth = betterAuth({
-  baseURL: process.env.BETTER_AUTH_URL, // ✅ যোগ করুন
+  baseURL: process.env.BETTER_AUTH_URL,
   trustedOrigins: [
-    "https://ecommerce-2o6q.vercel.app", // ✅ যোগ করুন
-    "http://localhost:3000", // লোকাল ডেভেলপমেন্টের জন্য রেখে দিন
+    "https://ecommerce-2o6q.vercel.app",
+    "http://localhost:3000",
   ],
   emailAndPassword: {
     enabled: true,
@@ -32,6 +32,12 @@ export const auth = betterAuth({
       number: { type: "string", required: false },
       address: { type: "string", required: false },
       bio: { type: "string", required: false },
+      role: {
+        type: "string",
+        required: false,
+        defaultValue: "user", // ✅ নতুন ইউজার ডিফল্ট "user" হবে
+        input: false,          // ✅ ইউজার নিজে সাইনআপের সময় role সেট করতে পারবে না (সিকিউরিটি)
+      },
     },
   },
 });
