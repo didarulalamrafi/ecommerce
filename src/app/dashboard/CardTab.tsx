@@ -151,62 +151,74 @@ export default function CartTab() {
     <div>
       <div className="space-y-3">
         {items.map((item) => (
+          // ✅ মোবাইল ফিক্স: আগে সব (ছবি + নাম/দাম + qty + remove) একলাইনে
+          // পাশাপাশি ছিল, ফলে মোবাইলে জায়গায় না ধরে ট্র্যাশ আইকনটা কেটে
+          // যাচ্ছিল। এখন ছোট স্ক্রিনে দুই সারিতে ভাগ হবে (flex-col), আর
+          // sm ব্রেকপয়েন্ট থেকে (ট্যাবলেট/ডেস্কটপ) আগের মতোই একলাইনে
+          // (sm:flex-row) দেখাবে।
           <div
             key={item.productId}
-            className="flex items-center gap-4 rounded-xl border border-[#202A44]/10 p-3 dark:border-[#F6F1E9]/10"
+            className="flex flex-col gap-3 rounded-xl border border-[#202A44]/10 p-2.5 sm:flex-row sm:items-center sm:gap-4 sm:p-3 dark:border-[#F6F1E9]/10"
           >
-            <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-[#202A44]/5 dark:bg-white/5">
-              {item.image ? (
-                <Image
-                  src={item.image}
-                  alt={item.name}
-                  fill
-                  className="object-cover"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-[10px] text-[#202A44]/30">
-                  ছবি নেই
-                </div>
-              )}
+            {/* --- উপরের সারি (মোবাইল): ছবি + নাম/দাম, একসাথে পাশাপাশি --- */}
+            <div className="flex items-center gap-3 sm:flex-1 sm:gap-4">
+              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-[#202A44]/5 dark:bg-white/5">
+                {item.image ? (
+                  <Image
+                    src={item.image}
+                    alt={item.name}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-[10px] text-[#202A44]/30">
+                    ছবি নেই
+                  </div>
+                )}
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-[#202A44] dark:text-[#F6F1E9]">
+                  {item.name}
+                </p>
+                <p className="mt-1 font-[family-name:var(--font-mono)] text-sm text-[#202A44]/70 dark:text-[#F6F1E9]/70">
+                  ৳{item.price.toLocaleString("bn-BD")}
+                </p>
+              </div>
             </div>
 
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-[#202A44] dark:text-[#F6F1E9]">
-                {item.name}
-              </p>
-              <p className="mt-1 font-[family-name:var(--font-mono)] text-sm text-[#202A44]/70 dark:text-[#F6F1E9]/70">
-                ৳{item.price.toLocaleString("bn-BD")}
-              </p>
-            </div>
+            {/* --- নিচের সারি (মোবাইল): qty stepper + remove, দুই পাশে ছড়িয়ে;
+                sm থেকে ডানপাশে গুটিয়ে আগের সারির সাথেই বসে যাবে --- */}
+            <div className="flex items-center justify-between gap-3 sm:justify-end">
+              <div className="flex items-center rounded-full border border-[#202A44]/15 dark:border-[#F6F1E9]/15">
+                <button
+                  onClick={() => updateQty(item.productId, item.qty - 1)}
+                  disabled={updatingId === item.productId || item.qty <= 1}
+                  className="px-3 py-1.5 text-[#202A44] disabled:opacity-30 dark:text-[#F6F1E9]"
+                >
+                  −
+                </button>
+                <span className="w-6 text-center text-sm text-[#202A44] dark:text-[#F6F1E9]">
+                  {item.qty}
+                </span>
+                <button
+                  onClick={() => updateQty(item.productId, item.qty + 1)}
+                  disabled={updatingId === item.productId}
+                  className="px-3 py-1.5 text-[#202A44] disabled:opacity-30 dark:text-[#F6F1E9]"
+                >
+                  +
+                </button>
+              </div>
 
-            <div className="flex items-center rounded-full border border-[#202A44]/15 dark:border-[#F6F1E9]/15">
               <button
-                onClick={() => updateQty(item.productId, item.qty - 1)}
-                disabled={updatingId === item.productId || item.qty <= 1}
-                className="px-3 py-1.5 text-[#202A44] disabled:opacity-30 dark:text-[#F6F1E9]"
-              >
-                −
-              </button>
-              <span className="w-6 text-center text-sm text-[#202A44] dark:text-[#F6F1E9]">
-                {item.qty}
-              </span>
-              <button
-                onClick={() => updateQty(item.productId, item.qty + 1)}
+                onClick={() => removeItem(item.productId)}
                 disabled={updatingId === item.productId}
-                className="px-3 py-1.5 text-[#202A44] disabled:opacity-30 dark:text-[#F6F1E9]"
+                aria-label="রিমুভ করুন"
+                className="shrink-0 rounded-full p-2 text-[#B1502F] transition hover:bg-[#B1502F]/10 disabled:opacity-30 dark:text-[#E2A227]"
               >
-                +
+                <TrashIcon />
               </button>
             </div>
-
-            <button
-              onClick={() => removeItem(item.productId)}
-              disabled={updatingId === item.productId}
-              aria-label="রিমুভ করুন"
-              className="shrink-0 rounded-full p-2 text-[#B1502F] transition hover:bg-[#B1502F]/10 disabled:opacity-30 dark:text-[#E2A227]"
-            >
-              <TrashIcon />
-            </button>
           </div>
         ))}
       </div>

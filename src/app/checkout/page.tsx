@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "../../context/CartContext";
+import { useSession } from "@/lib/auth-client";
 
 const API_URL =
   process.env.NEXT_PUBLIC_APP_URL || "https://ecommerce-server-woad.vercel.app";
@@ -93,6 +94,7 @@ type PaymentMethod = "cod" | "bkash";
 export default function CheckoutPage() {
   const router = useRouter();
   const { refreshCart } = useCart();
+  const { data: session } = useSession();
 
   const [items, setItems] = useState<CartItem[]>([]);
   const [loadingCart, setLoadingCart] = useState(true);
@@ -101,11 +103,15 @@ export default function CheckoutPage() {
 
   // ঠিকানা ফর্ম
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [district, setDistrict] = useState("");
   const [upazila, setUpazila] = useState("");
   const [area, setArea] = useState("");
   const [addressLine, setAddressLine] = useState("");
+
+  // প্রোফাইল থেকে অটো-ফিল হয়েছে কিনা — শুধু প্রথমবার প্রি-ফিল করার জন্য, ইউজার এডিট করলে আর ওভাররাইট করবে না
+  const [profileLoaded, setProfileLoaded] = useState(false);
 
   // পেমেন্ট
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cod");
@@ -119,6 +125,45 @@ export default function CheckoutPage() {
       .catch(() => setItems([]))
       .finally(() => setLoadingCart(false));
   }, []);
+
+  // ---- প্রোফাইল থেকে name/email/phone/address প্রি-ফিল ----
+  // ১. session-এ যা আছে (name/email) সাথে সাথেই বসিয়ে দেয়
+  // ২. এরপর ইউজারের বিস্তারিত প্রোফাইল (phone, district, upazila, area, addressLine)
+  //    /api/users/me থেকে fetch করে বাকিটা ফিল করে
+  //    ⚠️ এন্ডপয়েন্ট নাম আন্দাজ করে বসানো — তোমার backend-এ ভিন্ন route হলে (যেমন /api/profile) এখানে বদলে দিও
+  useEffect(() => {
+    if (!session?.user || profileLoaded) return;
+
+    const user = session.user as any;
+    setName((prev) => prev || user.name || "");
+    setEmail((prev) => prev || user.email || "");
+    if (user.phone) setPhone((prev) => prev || user.phone);
+
+    fetch(`${API_URL}/api/users/me`, {
+      credentials: "include",
+      cache: "no-store",
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((profile) => {
+        if (!profile) return;
+        setName((prev) => prev || profile.name || "");
+        setEmail((prev) => prev || profile.email || "");
+        setPhone((prev) => prev || profile.phone || "");
+
+        const addr = profile.address || profile.deliveryAddress;
+        if (addr) {
+          setDistrict((prev) => prev || addr.district || "");
+          setUpazila((prev) => prev || addr.upazila || "");
+          setArea((prev) => prev || addr.area || "");
+          setAddressLine((prev) => prev || addr.addressLine || "");
+        }
+      })
+      .catch(() => {
+        // প্রোফাইল এন্ডপয়েন্ট না থাকলে বা কোনো ডেটা না থাকলে চুপচাপ স্কিপ —
+        // ইউজার তখন নিজে হাতে ফর্মটা পূরণ করবে
+      })
+      .finally(() => setProfileLoaded(true));
+  }, [session, profileLoaded]);
 
   const subtotal = items.reduce((sum, i) => sum + i.price * i.qty, 0);
   const grandTotal = subtotal + DELIVERY_CHARGE;
@@ -154,6 +199,7 @@ export default function CheckoutPage() {
         body: JSON.stringify({
           deliveryAddress: {
             name,
+            email,
             phone,
             district,
             upazila,
@@ -249,9 +295,16 @@ export default function CheckoutPage() {
 
         {/* ========== ডেলিভারি ঠিকানা ========== */}
         <section className="rounded-2xl border border-[#202A44]/10 p-5 dark:border-[#F6F1E9]/10">
-          <h2 className="mb-4 text-sm font-semibold text-[#202A44] dark:text-[#F6F1E9]">
-            ডেলিভারি ঠিকানা
-          </h2>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-[#202A44] dark:text-[#F6F1E9]">
+              ডেলিভারি ঠিকানা
+            </h2>
+            {profileLoaded && (name || phone || district) && (
+              <span className="text-xs text-[#202A44]/40 dark:text-[#F6F1E9]/40">
+                প্রোফাইল থেকে নেওয়া — চাইলে বদলে নাও
+              </span>
+            )}
+          </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <input
@@ -267,6 +320,14 @@ export default function CheckoutPage() {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               className="rounded-xl border border-[#202A44]/15 bg-transparent px-4 py-2.5 text-sm text-[#202A44] outline-none focus:border-[#B1502F] dark:border-[#F6F1E9]/15 dark:text-[#F6F1E9]"
+            />
+
+            <input
+              type="email"
+              placeholder="ইমেইল (ঐচ্ছিক)"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="rounded-xl border border-[#202A44]/15 bg-transparent px-4 py-2.5 text-sm text-[#202A44] outline-none focus:border-[#B1502F] dark:border-[#F6F1E9]/15 dark:text-[#F6F1E9] sm:col-span-2"
             />
 
             <select

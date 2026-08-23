@@ -5,6 +5,6 @@ export function getRedirectPath(role: string): string {
     case "seller":
       return "/seller/dashboard";
     default:
-      return "/"; // সাধারণ user হলে home page (চাইলে অন্য path দাও)
+      return "/dashboard"; // সাধারণ user হলে নিজেদের ড্যাশবোর্ড/প্রোফাইলে যাবে
   }
 }

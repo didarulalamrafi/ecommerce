@@ -31,11 +31,21 @@ function DashboardContent() {
     isValidTab(tabParam) ? tabParam : "profile",
   );
 
+  // কার্ট ট্যাবে থাকলে dashboard-এর হেডিং/সাইডবার শেল লুকানো থাকবে —
+  // শুধু কার্টের কন্টেন্ট দেখাবে (URL এখনও /dashboard?tab=cart-ই থাকছে)
+  const isCartOnly = activeTab === "cart";
+
   useEffect(() => {
-    if (isValidTab(tabParam) && tabParam !== activeTab) {
-      setActiveTab(tabParam);
+    // ✅ FIX: আগে শুধু tabParam "valid" হলেই activeTab আপডেট হতো — মানে
+    // tabParam না থাকলে (যেমন প্রোফাইল আইকনে ক্লিক করলে, যেটা শুধু
+    // "/dashboard"-এ নিয়ে যায়, ?tab= ছাড়া) activeTab আগের ভ্যালুতেই
+    // (যেমন "cart") আটকে থাকত। এখন tabParam না থাকলে সেটাকে "profile"
+    // হিসেবে ধরে নিয়ে activeTab রিসেট করা হচ্ছে।
+    const nextTab: Tab = isValidTab(tabParam) ? tabParam : "profile";
+    if (nextTab !== activeTab) {
+      setActiveTab(nextTab);
     }
-  }, [tabParam, activeTab]);
+  }, [tabParam]);
 
   function selectTab(tab: Tab) {
     setActiveTab(tab);
@@ -67,6 +77,18 @@ function DashboardContent() {
     return null;
   }
 
+  // ---- কার্ট-অনলি ভিউ: হেডিং/সাইডবার ছাড়া, শুধু CartTab ----
+  // মোবাইলে সাইড প্যাডিং একটু কমানো হয়েছে (px-3) যাতে কার্ট কন্টেন্ট
+  // আরেকটু চওড়া জায়গা পায়; sm ব্রেকপয়েন্ট থেকে আগের প্যাডিং (px-5/px-8)।
+  if (isCartOnly) {
+    return (
+      <div className="mx-auto max-w-6xl px-3 py-6 sm:px-5 sm:py-10 md:px-8">
+        <CartTab />
+      </div>
+    );
+  }
+
+  // ---- স্বাভাবিক ড্যাশবোর্ড ভিউ (প্রোফাইল / অর্ডার হিস্টরি) ----
   return (
     <div className="mx-auto max-w-6xl px-5 py-10 md:px-8">
       <h1 className="mb-8 font-[family-name:var(--font-display)] text-3xl text-[#202A44] dark:text-[#F6F1E9]">
@@ -100,13 +122,12 @@ function DashboardContent() {
           </nav>
         </aside>
 
-        {/* Active tab content */}
+        {/* Active tab content — এখানে "cart" আর আসবে না, ওপরের if-এই আলাদা হয়ে গেছে */}
         <section className="flex-1">
           {activeTab === "profile" && session.user && (
             <ProfileTab user={session.user} />
           )}
           {activeTab === "orders" && <OrdersTab />}
-          {activeTab === "cart" && <CartTab />}
         </section>
       </div>
     </div>
