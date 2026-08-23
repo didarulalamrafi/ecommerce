@@ -5,13 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession, signOut, AuthUser } from "../lib/auth-client";
 import { useCart } from "../context/CartContext";
-
-/**
- * Sticky navbar for Maati — v9
- * UPDATED: সার্চ এখন সত্যিকারের কাজ করে (আগে শুধু UI ছিল, কোনো state/submit ছিল না)।
- * ডেস্কটপ ও মোবাইল দুই জায়গাতেই — Enter চাপলে বা সার্চ আইকনে ক্লিক করলে
- * /products?q=... এ নিয়ে যাবে, ঠিক আগে home page-এর সার্চের মতোই।
- */
+import { getRedirectPath } from "../lib/redirect-by-role";
 
 const cx = (...c: (string | false | undefined)[]) =>
   c.filter(Boolean).join(" ");
@@ -33,7 +27,6 @@ const NAV_LINKS = [
   { label: "যোগাযোগ", href: "/contact" },
 ];
 
-// TODO: নতুন ক্যাটাগরি অ্যাড করতে চাইলে শুধু এই array-তে যোগ করো
 const CATEGORIES = [
   { label: "ইলেকট্রনিক সামগ্রী", href: "/products/electronics" },
   { label: "খাদ্যপণ্য", href: "/products/food" },
@@ -46,6 +39,10 @@ export default function Navbar() {
   const { data: session, isPending } = useSession();
   const user = session?.user;
   const { cartCount } = useCart();
+
+  const profilePath = user
+    ? getRedirectPath((user as any)?.role || "user")
+    : "/dashboard";
 
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -80,7 +77,6 @@ export default function Navbar() {
     });
   };
 
-  // ✅ NEW: সার্চ সাবমিট হ্যান্ডলার — desktop ও mobile দুই ফর্মই এটা শেয়ার করে
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     router.push(
@@ -91,7 +87,6 @@ export default function Navbar() {
     setOpen(false);
   }
 
-  // ডেস্কটপে সার্চ আইকনে ক্লিক করলে: বন্ধ থাকলে খুলবে, খোলা থাকলে সাবমিট হবে
   function handleDesktopSearchIconClick() {
     if (!searchOpen) {
       setSearchOpen(true);
@@ -205,7 +200,7 @@ export default function Navbar() {
             <div className="ml-2 h-9 w-24 animate-pulse rounded-full bg-[#202A44]/10 dark:bg-white/10" />
           ) : user ? (
             <Link
-              href="/dashboard"
+              href={profilePath}
               className="ml-2 flex items-center gap-2 rounded-full border border-[#202A44]/15 py-1 pl-1 pr-3 transition-colors hover:bg-[#202A44]/5 dark:border-[#F6F1E9]/15 dark:hover:bg-white/10"
             >
               <Avatar name={user.name} />
@@ -251,7 +246,7 @@ export default function Navbar() {
         <nav className="flex flex-col gap-1 px-5 py-5 text-sm font-medium">
           {user ? (
             <Link
-              href="/dashboard"
+              href={profilePath}
               onClick={() => setOpen(false)}
               className="mb-3 flex items-center gap-3 rounded-xl border border-[#202A44]/10 p-3 dark:border-[#F6F1E9]/10"
             >
@@ -334,8 +329,6 @@ export default function Navbar() {
             {user && (
               <button
                 onClick={() => {
-                  // ✅ FIX: signOut() কে খালি কল করা যাবে না,
-                  // TS টাইপ অনুযায়ী কমপক্ষে একটা argument লাগবে
                   signOut({});
                   setOpen(false);
                 }}

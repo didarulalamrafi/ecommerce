@@ -1,10 +1,10 @@
-export function getRedirectPath(role?: string): string {
+export function getRedirectPath(role: string): string {
   switch (role) {
     case "admin":
-      return "/admin/products";
+      return "/admin/dashboard";
     case "seller":
-      return "/seller/dashboard"; // আপনার আসল route দিয়ে বদলান
+      return "/seller/dashboard";
     default:
-      return "/dashboard";
+      return "/"; // সাধারণ user হলে home page (চাইলে অন্য path দাও)
   }
 }

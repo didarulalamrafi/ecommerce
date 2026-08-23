@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useCart } from "../context/CartContext";
 
 /**
  * ✅ আপডেটেড Product interface - backend actual field names অনুযায়ী
@@ -14,11 +15,11 @@ interface Product {
   brand?: string;
   sellerName?: string;
   price: number;
-  oldPrice?: number; // ✅ Optional - যদি না থাকে 0 ধরবে
-  discount?: number; // ✅ Optional - যদি থাকে ব্যবহার করবে
+  oldPrice?: number;
+  discount?: number;
   rating?: number;
   reviewCount?: number;
-  image: string; // ✅ img না, image
+  image: string;
   category?: string;
   stock?: number;
 }
@@ -26,13 +27,16 @@ interface Product {
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_APP_URL || "https://ecommerce-server-woad.vercel.app";
 
-// ✅ Featured products বা সব products fetch করছি
 const TODAYS_DEALS_ENDPOINT = `${API_BASE_URL}/api/products?limit=8`;
 
 export default function TodaysBestDeals() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // ✅ FIX: CartContext থেকে addToCart নেওয়া হচ্ছে
+  const { addToCart } = useCart();
+  // ✅ কোন প্রোডাক্ট এখন "যোগ হচ্ছে" অবস্থায় আছে সেটা track করা (বাটন ডিসেবল করার জন্য)
+  const [addingId, setAddingId] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchProducts() {
@@ -50,7 +54,6 @@ export default function TodaysBestDeals() {
 
         const data = await res.json();
 
-        // ✅ FIX: Backend যা structure পাঠায় তা handle করছি
         const productList: Product[] = Array.isArray(data)
           ? data
           : data.products || [];
@@ -67,6 +70,27 @@ export default function TodaysBestDeals() {
     fetchProducts();
   }, []);
 
+  // ✅ FIX: + বাটনে ক্লিক করলে এখন সত্যিই কার্টে যোগ হবে
+  async function handleAddToCart(e: React.MouseEvent, p: Product) {
+    e.preventDefault(); // Link এর navigation আটকানো
+    e.stopPropagation();
+
+    setAddingId(p._id);
+    const success = await addToCart({
+      productId: p._id,
+      name: p.name,
+      price: p.price,
+      image: p.image,
+      qty: 1,
+    });
+    setAddingId(null);
+
+    if (!success) {
+      // লগইন করা না থাকলে বা এরর হলে লগইন পেজে পাঠানো
+      window.location.href = "/login";
+    }
+  }
+
   return (
     <section className="bg-white py-16">
       <div className="mx-auto max-w-7xl px-5 md:px-8">
@@ -82,7 +106,6 @@ export default function TodaysBestDeals() {
           </Link>
         </div>
 
-        {/* ========== লোডিং স্কেলেটন ========== */}
         {loading && (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => (
@@ -98,36 +121,31 @@ export default function TodaysBestDeals() {
           </div>
         )}
 
-        {/* ========== এরর অবস্থা ========== */}
         {!loading && error && (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center text-sm text-red-600">
             {error}
           </div>
         )}
 
-        {/* ========== খালি স্টেট ========== */}
         {!loading && !error && products.length === 0 && (
           <div className="rounded-2xl border border-[#14213D]/10 bg-[#F5F6F8] p-6 text-center text-sm text-[#14213D]/50">
             এখন কোনো ডিল নেই।
           </div>
         )}
 
-        {/* ========== প্রোডাক্ট গ্রিড ========== */}
         {!loading && !error && products.length > 0 && (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {products.map((p) => {
-              // ✅ FIX: Image URL validation
               const imageUrl =
                 p.image && p.image.trim() !== ""
                   ? p.image
                   : "/images/placeholder.png";
 
-              // ✅ FIX: Discount calculation
               const discount =
-                p.discount ?? // যদি discount field থাকে ব্যবহার করবে
+                p.discount ??
                 (p.oldPrice && p.oldPrice > 0
                   ? Math.round(((p.oldPrice - p.price) / p.oldPrice) * 100)
-                  : 0); // নয়তো 0
+                  : 0);
 
               return (
                 <Link
@@ -142,7 +160,6 @@ export default function TodaysBestDeals() {
                       fill
                       className="object-cover transition-transform duration-500 group-hover:scale-105"
                       onError={(e) => {
-                        // ✅ Image load fail → placeholder দেখাবে
                         const img = e.target as HTMLImageElement;
                         img.src = "/images/placeholder.png";
                       }}
@@ -162,7 +179,6 @@ export default function TodaysBestDeals() {
                     {p.sellerName || p.brand || "অজানা"}
                   </p>
 
-                  {/* ✅ Rating - optional check */}
                   {p.rating != null && p.rating > 0 && (
                     <div className="mt-2 flex items-center gap-1 text-xs text-[#14213D]/60">
                       <StarIcon />
@@ -186,10 +202,11 @@ export default function TodaysBestDeals() {
                     </div>
                     <button
                       aria-label="কার্টে যোগ করুন"
-                      onClick={(e) => e.preventDefault()}
-                      className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#14213D] text-white transition-colors hover:bg-[#FF5A1F]"
+                      onClick={(e) => handleAddToCart(e, p)}
+                      disabled={addingId === p._id}
+                      className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#14213D] text-white transition-colors hover:bg-[#FF5A1F] disabled:opacity-50"
                     >
-                      <PlusIcon />
+                      {addingId === p._id ? <SpinnerIcon /> : <PlusIcon />}
                     </button>
                   </div>
                 </Link>
@@ -228,6 +245,22 @@ function PlusIcon() {
       strokeWidth="2.5"
     >
       <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+function SpinnerIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      className="animate-spin"
+    >
+      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
     </svg>
   );
 }

@@ -46,21 +46,29 @@ export default function AuthForm({ mode }: AuthFormProps) {
         throw new Error(result.error.message || "কিছু একটা সমস্যা হয়েছে");
       }
 
-      // ✅ FIX: getSession() না করে, সরাসরি HTTP endpoint থেকে fetch করি
-      // Better Auth getSession() method arguments দাবি করে, তাই এটি skip করছি
+      // ✅ Session endpoint থেকে role পাই
+      // ⚠️ FIX: সঠিক path (`/get-session`, `/session` না) এবং সঠিক সার্ভার
+      // (Express, যেখানে Better Auth mount করা — Next.js সার্ভার না) ব্যবহার করছি
       let userRole = "user"; // Default role
 
       try {
-        // ✅ Session API endpoint থেকে role পাই
-        const sessionResponse = await fetch("/api/auth/session", {
-          method: "GET",
-          credentials: "include", // ✅ Cookies include করি
-        });
+        const sessionResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/get-session`,
+          {
+            method: "GET",
+            credentials: "include", // ✅ Cookies include করি
+          },
+        );
 
         if (sessionResponse.ok) {
           const sessionData = await sessionResponse.json();
           // ✅ Response থেকে role extract করি (type safe casting সহ)
           userRole = (sessionData?.user as any)?.role || "user";
+        } else {
+          console.warn(
+            "Session fetch failed with status:",
+            sessionResponse.status,
+          );
         }
       } catch (fetchErr) {
         // ✅ Fallback: default "user" role ব্যবহার করি

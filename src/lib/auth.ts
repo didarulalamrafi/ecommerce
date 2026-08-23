@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { MongoClient } from "mongodb";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
+import { customSession } from "better-auth/plugins";
 
 const client = new MongoClient(process.env.MONGODB_URI as string);
 const db = client.db();
@@ -35,9 +36,17 @@ export const auth = betterAuth({
       role: {
         type: "string",
         required: false,
-        defaultValue: "user", // ✅ নতুন ইউজার ডিফল্ট "user" হবে
-        input: false,          // ✅ ইউজার নিজে সাইনআপের সময় role সেট করতে পারবে না (সিকিউরিটি)
+        defaultValue: "user",
+        input: false,
       },
     },
   },
+  plugins: [
+    customSession(async ({ user, session }) => {
+      return {
+        user,
+        session,
+      };
+    }),
+  ],
 });

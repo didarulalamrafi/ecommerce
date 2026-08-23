@@ -3,9 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "../../../lib/auth-client";
+import { useCart } from "../../../context/CartContext";
 
-// NOTE: প্রোডাক্ট ডেটা বাইরের ব্যাকএন্ড থেকে আসছে, তাই ProductsPage-এর মতোই
-// NEXT_PUBLIC_APP_URL env variable ব্যবহার করা হচ্ছে (auth-এর সাথে সম্পর্কিত নয়)।
 const API_URL =
   process.env.NEXT_PUBLIC_APP_URL || "https://ecommerce-server-woad.vercel.app";
 
@@ -15,7 +14,8 @@ interface Product {
   nameEn?: string;
   artisan?: string;
   price: number;
-  image: string;
+  image?: string;
+  img?: string;
   category: string;
   tag?: string;
   stock: number;
@@ -24,25 +24,45 @@ interface Product {
 export default function ProductDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { data: session } = useSession(); // লগইন করা আছে কিনা চেক করতে
+  const { data: session } = useSession();
   const user = session?.user;
+  // ✅ FIX: CartContext থেকে addToCart — এটাই backend এর সাথে সঠিকভাবে কথা বলে
+  const { addToCart } = useCart();
 
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [qty, setQty] = useState(1);
   const [adding, setAdding] = useState(false);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    fetch(`${API_URL}/api/products/${id}`)
-      .then((r) => r.json())
-      .then(setProduct)
-      .catch(() => setProduct(null))
+    if (!id) return;
+
+    setLoading(true);
+    setNotFound(false);
+
+    fetch(`${API_URL}/api/products/${id}`, { cache: "no-store" })
+      .then(async (r) => {
+        if (!r.ok) {
+          throw new Error(`Product fetch failed: ${r.status}`);
+        }
+        return r.json();
+      })
+      .then((data) => {
+        setProduct(data);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch product:", err);
+        setProduct(null);
+        setNotFound(true);
+      })
       .finally(() => setLoading(false));
   }, [id]);
 
+  // ✅ FIX: নিজের অ্যাপের অস্তিত্বহীন relative "/api/cart" এর বদলে
+  // এখন CartContext এর addToCart ব্যবহার হচ্ছে, যেটা সঠিক backend URL এ পাঠায়
   async function handleAddToCart() {
-    // লগইন করা না থাকলে কার্টে যোগ করতে দেওয়া হবে না, লগইন পেজে পাঠানো হবে
     if (!user) {
       router.push("/login");
       return;
@@ -51,28 +71,21 @@ export default function ProductDetailsPage() {
 
     setAdding(true);
     setMessage("");
-    try {
-      // NOTE: কার্ট এন্ডপয়েন্ট নিজের Next.js অ্যাপের API route (relative path),
-      // প্রোডাক্ট ডেটার মতো বাইরের ব্যাকএন্ডে না।
-      const res = await fetch(`/api/cart`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          productId: product._id,
-          name: product.name,
-          price: product.price,
-          image: product.image,
-          qty,
-        }),
-      });
-      if (!res.ok) throw new Error();
+
+    const success = await addToCart({
+      productId: product._id,
+      name: product.name,
+      price: product.price,
+      image: product.image || product.img,
+      qty,
+    });
+
+    if (success) {
       setMessage("কার্টে যোগ হয়েছে");
-    } catch {
+    } else {
       setMessage("কার্টে যোগ করা যায়নি, আবার চেষ্টা করুন");
-    } finally {
-      setAdding(false);
     }
+    setAdding(false);
   }
 
   if (loading) {
@@ -83,7 +96,7 @@ export default function ProductDetailsPage() {
     );
   }
 
-  if (!product) {
+  if (notFound || !product) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center text-[#202A44]/60 dark:text-[#F6F1E9]/60">
         প্রোডাক্ট পাওয়া যায়নি
@@ -91,15 +104,23 @@ export default function ProductDetailsPage() {
     );
   }
 
+  const imageSrc = product.image || product.img || "";
+
   return (
     <div className="mx-auto max-w-5xl px-5 py-10 md:px-8">
       <div className="grid gap-10 md:grid-cols-2">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={product.image}
-          alt={product.name}
-          className="aspect-square w-full rounded-2xl object-cover"
-        />
+        {imageSrc ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={imageSrc}
+            alt={product.name}
+            className="aspect-square w-full rounded-2xl object-cover"
+          />
+        ) : (
+          <div className="flex aspect-square w-full items-center justify-center rounded-2xl bg-[#202A44]/5 text-sm text-[#202A44]/40 dark:bg-white/5 dark:text-[#F6F1E9]/40">
+            ছবি নেই
+          </div>
+        )}
 
         <div>
           {product.tag && (

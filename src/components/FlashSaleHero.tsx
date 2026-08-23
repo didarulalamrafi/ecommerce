@@ -6,9 +6,9 @@ import { useRouter } from "next/navigation";
 
 /**
  * Electronics banner images shown in the rotating carousel on the right.
- * These are placeholder Unsplash URLs — swap them with your own product
- * photos when ready (see the comment at the bottom of this file for the
- * recommended way to add images).
+ * এখানে প্রোডাক্টের তথ্য বসাও — একটার পর একটা অটোমেটিক ঘুরে দেখাবে।
+ * প্রতিটা আইটেমে src, alt, title ছাড়াও price/productId যোগ করে
+ * ক্লিক করলে প্রোডাক্ট পেজে নিয়ে যাওয়ার লজিকও বসাতে পারবে।
  */
 const BANNER_IMAGES = [
   {
@@ -33,38 +33,8 @@ const BANNER_IMAGES = [
   },
 ];
 
-interface CountdownParts {
-  h: number;
-  m: number;
-  s: number;
-}
-
-function getCountdownParts(target: number): CountdownParts {
-  const diff = Math.max(0, target - Date.now());
-  const h = Math.floor(diff / 3_600_000);
-  const m = Math.floor((diff % 3_600_000) / 60_000);
-  const s = Math.floor((diff % 60_000) / 1000);
-  return { h, m, s };
-}
-
 export default function FlashSaleHero() {
   const router = useRouter();
-
-  // ফ্ল্যাশ সেল কাউন্টডাউন — আজ রাত ১২টা পর্যন্ত টাইমার চলবে
-  const [endOfDay] = useState<number>(() => {
-    const d = new Date();
-    d.setHours(23, 59, 59, 999);
-    return d.getTime();
-  });
-  const [time, setTime] = useState<CountdownParts>(() =>
-    getCountdownParts(endOfDay),
-  );
-
-  useEffect(() => {
-    // প্রতি সেকেন্ডে কাউন্টডাউন আপডেট হবে
-    const id = setInterval(() => setTime(getCountdownParts(endOfDay)), 1000);
-    return () => clearInterval(id);
-  }, [endOfDay]);
 
   // ডান পাশের ব্যানার ইমেজ — কোনটা এখন দেখা যাচ্ছে তার ইনডেক্স
   const [activeIndex, setActiveIndex] = useState(0);
@@ -77,22 +47,20 @@ export default function FlashSaleHero() {
     return () => clearInterval(id);
   }, []);
 
-  const pad = (n: number) => String(n).padStart(2, "0");
-
   return (
     <section className="mx-auto max-w-7xl px-5 py-8 md:px-8">
       {/*
         NOTE: এখানে grid এর বদলে flex ইউজ করা হয়েছে ইচ্ছে করেই।
         কারণ: নিচের বাম পাশের অফার বক্সটা যদি কমেন্ট করে দাও (disable করে দাও),
-        তাহলে ডান পাশের ব্যানার (flex-1 দেওয়া আছে) automatically পুরো width/space
-        নিয়ে নিবে — কোনো className পাল্টাতে হবে না।
+        তাহলে ডান পাশের ব্যানার automatically পুরো width/space নিয়ে নিবে —
+        কোনো className পাল্টাতে হবে না।
       */}
       <div className="flex flex-col gap-4 md:flex-row">
-        {/* ========== বাম পাশ: ফ্ল্যাশ সেল প্রোমো বক্স ==========
+        {/* ========== বাম পাশ: ফ্ল্যাশ সেল প্রোমো বক্স (৪০%) ==========
             👉 পুরো এই ব্লকটা (নিচের <div> থেকে তার closing </div> পর্যন্ত)
                কমেন্ট করে দিলে ডান পাশের ব্যানার একাই পুরো জায়গা নিয়ে নিবে।
         */}
-        <div className="relative overflow-hidden rounded-3xl bg-[#14213D] p-8 text-white md:w-[62%] md:p-12">
+        <div className="relative overflow-hidden rounded-3xl bg-[#14213D] p-8 text-white md:w-[40%] md:p-12">
           <p className="mb-3 font-[family-name:var(--font-mono)] text-xs uppercase tracking-widest text-[#FFC93C]">
             আজকের মেলা · সীমিত সময়
           </p>
@@ -104,15 +72,6 @@ export default function FlashSaleHero() {
             সেলে ৪৫% পর্যন্ত ছাড়।
           </p>
 
-          {/* কাউন্টডাউন টাইমার — ঘণ্টা : মিনিট : সেকেন্ড */}
-          <div className="mt-6 flex items-center gap-2">
-            <CountBox label="ঘণ্টা" value={pad(time.h)} />
-            <span className="pb-4 text-xl text-white/40">:</span>
-            <CountBox label="মিনিট" value={pad(time.m)} />
-            <span className="pb-4 text-xl text-white/40">:</span>
-            <CountBox label="সেকেন্ড" value={pad(time.s)} />
-          </div>
-
           <button
             onClick={() => router.push("/products")}
             className="mt-8 rounded-full bg-[#FF5A1F] px-7 py-3 text-sm font-medium text-white transition-colors hover:bg-[#e64f18]"
@@ -122,10 +81,13 @@ export default function FlashSaleHero() {
         </div>
         {/* ========== বাম পাশ শেষ ========== */}
 
-        {/* ========== ডান পাশ: অটো-চেঞ্জিং ইলেকট্রনিক্স ব্যানার (ছবি একটার পর একটা আসবে) ==========
-            flex-1 থাকার কারণে বাম পাশ কমেন্ট করে দিলে এটা নিজে থেকেই ফুল স্পেস নিয়ে নিবে।
+        {/* ========== ডান পাশ: অটো-চেঞ্জিং ইলেকট্রনিক্স ব্যানার (৬০%) ==========
+            👉 flex-1 এর বদলে এখন সরাসরি md:w-[60%] দেওয়া হয়েছে, যাতে
+               বাম-ডান ঠিক ৪০/৬০ অনুপাতে থাকে। বাম পাশ কমেন্ট করলে এটা আর
+               automatically ফুল স্পেস নিবে না — চাইলে তখন এখানে md:w-full
+               বসিয়ে দিও।
         */}
-        <div className="relative h-[220px] w-full flex-1 overflow-hidden rounded-3xl sm:h-[280px] md:h-auto md:min-h-[26rem]">
+        <div className="relative h-[280px] w-full overflow-hidden rounded-3xl sm:h-[340px] md:h-auto md:w-[60%] md:min-h-[26rem]">
           {BANNER_IMAGES.map((banner, index) => (
             <div
               key={banner.src}
@@ -139,7 +101,7 @@ export default function FlashSaleHero() {
                 alt={banner.alt}
                 fill
                 className="object-cover"
-                sizes="(max-width: 768px) 100vw, 40vw"
+                sizes="(max-width: 768px) 100vw, 60vw"
                 priority={index === 0} // প্রথম ইমেজটা আগে লোড হবে (LCP এর জন্য ভালো)
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#14213D]/80 via-transparent to-transparent" />
@@ -173,17 +135,6 @@ export default function FlashSaleHero() {
         </div>
       </div>
     </section>
-  );
-}
-
-function CountBox({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col items-center">
-      <span className="rounded-lg bg-white/10 px-3 py-1.5 font-[family-name:var(--font-mono)] text-xl font-semibold">
-        {value}
-      </span>
-      <span className="mt-1 text-[10px] text-white/40">{label}</span>
-    </div>
   );
 }
 

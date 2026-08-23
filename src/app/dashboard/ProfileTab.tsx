@@ -9,6 +9,7 @@ interface ProfileTabProps {
 
 export default function ProfileTab({ user }: ProfileTabProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     name: user.name || "",
     email: user.email || "",
@@ -24,21 +25,33 @@ export default function ProfileTab({ user }: ProfileTabProps) {
   }
 
   async function handleSave() {
+    setSaving(true);
     try {
-      const res = await fetch("/api/user/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
+      // ✅ FIX: relative path না দিয়ে Express সার্ভারের (NEXT_PUBLIC_APP_URL)
+      // পুরো URL ব্যবহার করছি, নাহলে এটা Next.js সার্ভারকে (localhost:3000)
+      // হিট করত এবং কখনোই আসল backend-এ পৌঁছাত না (404 দিত)।
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_APP_URL}/api/user/profile`,
+        {
+          method: "PATCH",
+          credentials: "include", // ✅ Session cookie পাঠানোর জন্য জরুরি (cross-origin)
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form),
+        },
+      );
 
       if (res.ok) {
         setIsEditing(false);
-        // Optionally refresh the page or update session
+        // ✅ আপডেট হওয়া ডেটা সাথে সাথে দেখানোর জন্য পেজ রিফ্রেশ করছি
+        window.location.reload();
       } else {
-        alert("প্রোফাইল আপডেট ব্যর্থ হয়েছে");
+        const errBody = await res.json().catch(() => null);
+        alert(errBody?.error || "প্রোফাইল আপডেট ব্যর্থ হয়েছে");
       }
     } catch (err) {
       alert("ত্রুটি ঘটেছে");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -151,9 +164,10 @@ export default function ProfileTab({ user }: ProfileTabProps) {
         {isEditing && (
           <button
             onClick={handleSave}
-            className="w-full rounded-lg bg-[#202A44] py-2 text-[#F6F1E9] transition hover:opacity-90 dark:bg-[#F6F1E9] dark:text-[#202A44]"
+            disabled={saving}
+            className="w-full rounded-lg bg-[#202A44] py-2 text-[#F6F1E9] transition hover:opacity-90 disabled:opacity-50 dark:bg-[#F6F1E9] dark:text-[#202A44]"
           >
-            সেভ করুন
+            {saving ? "সেভ হচ্ছে..." : "সেভ করুন"}
           </button>
         )}
       </div>
