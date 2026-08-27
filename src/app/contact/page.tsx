@@ -269,15 +269,7 @@ function Seal({ className }: { className?: string }) {
         strokeWidth="1"
         className="text-[#B1502F]/25 dark:text-[#E2A227]/25"
       />
-      <circle
-        cx="50"
-        cy="50"
-        r="37"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1"
-        className="text-[#B1502F]/45 dark:text-[#E2A227]/45"
-      />
+
       <circle
         cx="50"
         cy="50"
