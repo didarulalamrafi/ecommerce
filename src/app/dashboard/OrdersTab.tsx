@@ -11,7 +11,7 @@ interface Order {
 }
 
 const API_URL =
-  process.env.NEXT_PUBLIC_APP_URL || "https://ecommerce-server-woad.vercel.app";
+  process.env.NEXT_PUBLIC_API_URL || "https://ecommerce-server-woad.vercel.app";
 
 // ✅ FIX: backend এখন ইংরেজিতে status পাঠায় (pending/approved/rejected/delivered)
 // তাই key গুলো ইংরেজি, আর ডিসপ্লের জন্য বাংলা লেবেল আলাদা রাখা হয়েছে।

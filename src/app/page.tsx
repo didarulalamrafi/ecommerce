@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { Space_Grotesk, Inter, IBM_Plex_Mono } from "next/font/google";
 import FlashSaleHero from "@/components/FlashSaleHero";
 import TodaysBestDeals from "@/components/Todaysbestdeals";
-import FAQSection from "@/components/FAQSection";
+// import FAQSection from "@/components/FAQSection";
 
 /**
  * Fonts

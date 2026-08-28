@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import ProductCard, { type Product } from "../../components/ProductCard";
 
 const API_URL =
-  process.env.NEXT_PUBLIC_APP_URL || "https://ecommerce-server-woad.vercel.app";
+  process.env.NEXT_PUBLIC_API_URL || "https://ecommerce-server-woad.vercel.app";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);

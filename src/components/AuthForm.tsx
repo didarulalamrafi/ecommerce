@@ -47,13 +47,14 @@ export default function AuthForm({ mode }: AuthFormProps) {
       }
 
       // ✅ Session endpoint থেকে role পাই
-      // ⚠️ FIX: সঠিক path (`/get-session`, `/session` না) এবং সঠিক সার্ভার
-      // (Express, যেখানে Better Auth mount করা — Next.js সার্ভার না) ব্যবহার করছি
+      // ⚠️ FIX: এই এন্ডপয়েন্ট ব্যাকএন্ডে (Express, যেখানে Better Auth
+      // mount করা) আছে, তাই NEXT_PUBLIC_API_URL ব্যবহার করছি —
+      // NEXT_PUBLIC_APP_URL (ফ্রন্টএন্ড) না
       let userRole = "user"; // Default role
 
       try {
         const sessionResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/get-session`,
+          `${process.env.NEXT_PUBLIC_API_URL}/api/auth/get-session`,
           {
             method: "GET",
             credentials: "include", // ✅ Cookies include করি
@@ -90,9 +91,13 @@ export default function AuthForm({ mode }: AuthFormProps) {
   async function handleOAuth(provider: "google" | "facebook") {
     // OAuth flow সরাসরি redirect করে বলে এখানে role পাওয়া যায় না
     // তাই callback একটা neutral page-এ যাবে, সেখান থেকে role দেখে আবার redirect হবে
+    // ⚠️ FIX: authClient এর baseURL এখন ব্যাকএন্ডে (5000) পয়েন্ট করে, তাই
+    // এখানে relative path দিলে সেটা 5000/auth/redirect হয়ে যেত — ভুল।
+    // absolute URL (ফ্রন্টএন্ডের, NEXT_PUBLIC_APP_URL) দিতে হবে, যাতে
+    // ব্যাকএন্ড লগইনের পর সঠিক জায়গায় (ফ্রন্টএন্ডে) ফাইনাল রিডাইরেক্ট করে।
     await authClient.signIn.social({
       provider,
-      callbackURL: "/auth/redirect",
+      callbackURL: `${process.env.NEXT_PUBLIC_APP_URL}/auth/redirect`,
     });
   }
 

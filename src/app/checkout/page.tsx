@@ -6,7 +6,8 @@ import { useCart } from "../../context/CartContext";
 import { useSession } from "@/lib/auth-client";
 
 const API_URL =
-  process.env.NEXT_PUBLIC_APP_URL || "https://ecommerce-server-woad.vercel.app";
+  process.env.NEXT_PUBLIC_APP_URLL ||
+  "https://ecommerce-server-woad.vercel.app";
 
 // 👉 তোমার দোকানের বিকাশ নাম্বার এখানে বসাও
 const STORE_BKASH_NUMBER = "01XXXXXXXXX";

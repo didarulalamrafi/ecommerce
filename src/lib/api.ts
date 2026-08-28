@@ -1,6 +1,6 @@
 import { ApiErrorBody } from "@/types";
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL;
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 if (!BASE_URL) {
   console.warn(

@@ -20,7 +20,7 @@ interface CartItem {
 }
 
 const API_URL =
-  process.env.NEXT_PUBLIC_APP_URL || "https://ecommerce-server-woad.vercel.app";
+  process.env.NEXT_PUBLIC_API_URL || "https://ecommerce-server-woad.vercel.app";
 
 export default function CartTab() {
   const [items, setItems] = useState<CartItem[]>([]);

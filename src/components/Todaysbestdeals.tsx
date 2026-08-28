@@ -25,7 +25,7 @@ interface Product {
 }
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_APP_URL || "https://ecommerce-server-woad.vercel.app";
+  process.env.NEXT_PUBLIC_API_URL || "https://ecommerce-server-woad.vercel.app";
 
 const TODAYS_DEALS_ENDPOINT = `${API_BASE_URL}/api/products?limit=8`;
 
