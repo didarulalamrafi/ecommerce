@@ -192,10 +192,10 @@ export function OrderCard({
   const sc = statusConfig[status];
 
   // ✅ FIX: deliveryAddress.name/phone সবসময় থাকে (checkout এ required),
-  // buyer.name/email account থেকে আসে (নাও থাকতে পারে)
+  // buyer.name/number account থেকে আসে (নাও থাকতে পারে)
   const recipientName =
     order.deliveryAddress?.name || order.buyer?.name || "অজানা ক্রেতা";
-  const recipientPhone = order.deliveryAddress?.phone || order.buyer?.phone;
+  const recipientPhone = order.deliveryAddress?.phone || order.buyer?.number;
   const address = formatDeliveryAddress(order.deliveryAddress);
 
   return (

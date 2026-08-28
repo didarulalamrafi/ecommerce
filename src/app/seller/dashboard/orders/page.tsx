@@ -6,7 +6,7 @@ import { useSession } from "@/lib/auth-client";
 import { getMySellerOrders } from "@/services/orders";
 import { ApiError } from "@/lib/api";
 import type { Order } from "@/types";
-import { OrderCard, OrderDetailsModal } from "../components/Ordercomponents";
+import { OrderCard, OrderDetailsModal } from "../components/OrderComponents";
 // import { OrderCard, OrderDetailsModal } from "../OrderComponents";
 // import {
 //   OrderCard,

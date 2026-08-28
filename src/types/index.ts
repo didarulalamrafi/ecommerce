@@ -1,5 +1,3 @@
-// types/index.ts
-
 export type Role = "user" | "seller" | "admin";
 
 export interface User {
@@ -83,6 +81,16 @@ export interface OrderBuyer {
   number?: string;
 }
 
+// ✅ NEW: ডেলিভারি প্রাপকের ঠিকানা — checkout-এ required, ব্যাকএন্ড অবজেক্ট হিসেবে পাঠায়
+export interface DeliveryAddress {
+  name: string;
+  phone: string;
+  addressLine?: string;
+  area?: string;
+  upazila?: string;
+  district?: string;
+}
+
 export interface Order {
   _id: string;
   userId: string;
@@ -90,7 +98,7 @@ export interface Order {
   items: OrderItem[]; // সেলার-ড্যাশবোর্ডের এন্ডপয়েন্ট শুধু ঐ সেলারের আইটেমগুলোই ফিল্টার করে পাঠাবে
   total: number; // পুরো অর্ডারের মোট (সব সেলার মিলিয়ে)
   status: string; // পুরো অর্ডারের overall status (সাধারণত সব আইটেমের status থেকে ডেরাইভড)
-  shippingAddress?: string;
+  deliveryAddress?: DeliveryAddress; // ✅ FIX: shippingAddress (string) এর বদলে আসল অবজেক্ট শেপ
   createdAt: string;
 }
 
